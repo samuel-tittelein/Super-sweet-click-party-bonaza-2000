@@ -1,0 +1,19 @@
+# Love2D / Lua
+*.love
+/out/
+/love/
+/makelove-build/
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.bak

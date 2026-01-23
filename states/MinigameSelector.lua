@@ -11,10 +11,10 @@ function MinigameSelector:enter()
         gStateMachine:change('menu')
     end))
 
-    local rows = 5
-    local cols = 3
-    local btnW, btnH = 180, 75
-    local startX = 280
+    local rows = 4
+    local cols = 4
+    local btnW, btnH = 200, 60
+    local startX = 200
     local startY = 220
     local padding = 15
 

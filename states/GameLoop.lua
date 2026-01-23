@@ -17,13 +17,12 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait', 'runnerDash', 'find-different' }
-    for _, name in ipairs(minigameList) do
-        local success, mg = pcall(require, 'minigames.' .. name .. '.init')
+    for _, mgData in ipairs(G_MINIGAMES) do
+        local success, mg = pcall(require, 'minigames.' .. mgData.id .. '.init')
         if success then
             table.insert(self.availableMinigames, mg)
         else
-            error("Failed to load minigame: " .. name .. "\nError: " .. tostring(mg))
+            error("Failed to load minigame: " .. mgData.id .. "\nError: " .. tostring(mg))
         end
     end
     -- Manual insertions removed in favor of list
@@ -100,7 +99,7 @@ function GameLoop:nextLevel()
 
     self.currentMinigame = self.availableMinigames[idx]
     self.currentMinigameIndex = idx
-    
+
     -- Safety check: if minigame is nil, use first minigame
     if not self.currentMinigame then
         if #self.availableMinigames > 0 then

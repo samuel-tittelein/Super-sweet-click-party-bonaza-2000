@@ -17,7 +17,7 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko'}
+    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger'}
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -83,7 +83,7 @@ function GameLoop:nextLevel()
             idx = 1
         else
             idx = self.currentMinigameIndex + 1
-            if idx > 2 then 
+            if idx > #self.availableMinigames then 
                 idx = 1 
                 self.difficulty = math.floor(self.difficulty) + 1
             end 

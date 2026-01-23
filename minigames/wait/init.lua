@@ -7,6 +7,7 @@ function Minigame:enter(difficulty)
     self.background = love.graphics.newImage("minigames/wait/assets/background.jpg")
     self.main = love.graphics.newImage("minigames/wait/assets/main.png")
     self.main_blesse = love.graphics.newImage("minigames/wait/assets/main_blesse.png")
+    self.aie = love.audio.newSource("minigames/wait/assets/aie.ogg", "static")
     self.state = "waiting"
     self.timer = 0
     self.winTime = 5
@@ -41,6 +42,10 @@ end
 function Minigame:mousepressed(x, y, button)
     if self.state == "waiting" and button == 1 then
         self.state = "lost"
+        if self.aie then
+            self.aie:stop()
+            self.aie:play()
+        end
     end
 end
 

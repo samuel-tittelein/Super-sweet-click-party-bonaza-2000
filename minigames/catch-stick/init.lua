@@ -6,10 +6,10 @@ function Minigame:enter(difficulty)
     self.lost = false
     self.clickBonus = 30
     
-    -- Calculate hand position based on difficulty (linear)
-    -- Higher difficulty = hand is lower = less reaction time
-    -- Start at y=100, move down 40px per difficulty level
-    self.handY = math.min(100 + (self.difficulty - 1) * 40, 500)
+    -- Calculate hand position
+    -- NEW: Fixed position mechanism as per user request
+    self.catchY = 550 -- The vertical line where we must catch
+    self.handY = self.catchY -- Keep handY variable for compatibility if used elsewhere
     self.handX = 640 -- Center of screen
     
     -- Random delay before dropping (1-2 seconds)
@@ -18,7 +18,8 @@ function Minigame:enter(difficulty)
     
     -- Stick properties
     self.stickX = self.handX
-    self.stickY = self.handY + 30 -- Below hand
+    -- Stick starts higher up now, maybe even off the top of the screen or just at the top edge
+    self.stickY = -150 
     self.stickWidth = 20
     self.stickHeight = 120
     self.stickVelocity = 0
@@ -31,19 +32,55 @@ function Minigame:enter(difficulty)
     -- Game phases: "waiting", "falling", "caught", "missed"
     self.phase = "waiting"
     
-    -- Try to load images, use shapes as fallback
+    -- Try to load images
     self.useImages = false
-    local success, handImg = pcall(love.graphics.newImage, "minigames/catch-stick/assets/images/hand.png")
-    if success then
-        self.img_hand = handImg
-        local success2, stickImg = pcall(love.graphics.newImage, "minigames/catch-stick/assets/images/stick.png")
-        if success2 then
-            self.img_stick = stickImg
-            self.useImages = true
-            self.stickWidth = self.img_stick:getWidth()
-            self.stickHeight = self.img_stick:getHeight()
-        end
+    local basePath = "minigames/catch-stick/assets/"
+    
+    -- Randomize background and audio (1 to 3)
+    local idx = math.random(1, 3)
+    local bgPath = basePath .. "fond.jpg"
+    local audioPath = basePath .. "fond-sonore.ogg"
+    
+    if idx > 1 then
+        bgPath = basePath .. "fond_" .. idx .. ".jpg"
+        audioPath = basePath .. "fond-sonore-" .. idx .. ".ogg"
     end
+    
+    local success, bg = pcall(love.graphics.newImage, bgPath)
+    if success then self.img_bg = bg end
+    
+    -- Load and play audio
+    local audioSuccess, audio = pcall(love.audio.newSource, audioPath, "stream")
+    if audioSuccess then
+        self.bgMusic = audio
+        self.bgMusic:setLooping(true)
+        print("AUDIO: Catch-stick playing bgMusic")
+        self.bgMusic:play()
+    end
+    
+    local s1, hVide = pcall(love.graphics.newImage, basePath .. "main-vide-removebg-preview.png")
+    local s2, hTot = pcall(love.graphics.newImage, basePath .. "attrape-tard-removebg-preview.png")
+    local s3, hParfait = pcall(love.graphics.newImage, basePath .. "attrape-parfait-removebg-preview.png")
+    local s4, hTard = pcall(love.graphics.newImage, basePath .. "attrape-tot-removebg-preview.png")
+    
+    if s1 and s2 and s3 and s4 then
+        self.img_hand_vide = hVide
+        self.img_hand_tot = hTot
+        self.img_hand_parfait = hParfait
+        self.img_hand_tard = hTard
+        self.useImages = true
+    end
+    
+    -- Stick image
+    local s5, stickImg = pcall(love.graphics.newImage, basePath .. "baton-removebg-preview.png")
+    if s5 then
+        self.img_stick = stickImg
+        self.stickWidth = self.img_stick:getWidth() * 0.65 -- Scale stick down a bit?
+       
+        self.stickHeight = self.img_stick:getHeight() * 0.65
+    end
+    
+    self.catchResult = nil -- "tot", "parfait", "tard"
     
     -- Visual feedback
     self.feedbackTimer = 0
@@ -95,20 +132,26 @@ end
 
 function Minigame:draw()
     -- Background
-    love.graphics.setColor(0.7, 0.85, 1, 1) -- Sky blue
-    love.graphics.rectangle("fill", 0, 0, 1280, 720)
-    
-    -- Ground
-    love.graphics.setColor(0.4, 0.6, 0.3, 1) -- Grass green
-    love.graphics.rectangle("fill", 0, 650, 1280, 70)
+    love.graphics.setColor(1, 1, 1, 1)
+    if self.img_bg then
+        local bgScaleX = 1280 / self.img_bg:getWidth()
+        local bgScaleY = 720 / self.img_bg:getHeight()
+        love.graphics.draw(self.img_bg, 0, 0, 0, bgScaleX, bgScaleY)
+    else
+        love.graphics.setColor(0.7, 0.85, 1, 1) -- Sky blue
+        love.graphics.rectangle("fill", 0, 0, 1280, 720)
+        
+        -- Ground
+        love.graphics.setColor(0.4, 0.6, 0.3, 1) -- Grass green
+        love.graphics.rectangle("fill", 0, 650, 1280, 70)
+    end
     
     if self.phase == "waiting" or self.phase == "falling" then
-        -- Draw hand holding or releasing stick
-        self:drawHand()
+        -- Draw stick falling
         self:drawStick()
     elseif self.phase == "caught" then
-        -- Draw stick caught (frozen)
-        self:drawStick()
+        -- Draw stick caught (frozen) -> REMOVED because hand sprite contains stick
+        -- self:drawStick()
         love.graphics.setColor(0, 1, 0, 1)
         love.graphics.printf("CAUGHT!", 0, 300, 1280, "center")
     elseif self.phase == "missed" then
@@ -126,39 +169,52 @@ function Minigame:draw()
     -- Difficulty indicator
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
     love.graphics.printf("Difficulty: " .. self.difficulty, 0, 680, 1280, "center")
+    
+    self:drawPlayerHand()
 end
 
-function Minigame:drawHand()
-    if self.useImages and self.img_hand then
+function Minigame:drawPlayerHand()
+    if self.useImages then
+        -- Static position
+        -- Center hand visually on the line. 
+        -- If the hand sprite includes the forearm, the center might be lower than the "fingers".
+        -- User wanted it "higher", so we subtract from Y.
+        local mx, my = self.handX, self.catchY - 50 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(self.img_hand, self.handX, self.handY, 0, 1, 1,
-            self.img_hand:getWidth() / 2, self.img_hand:getHeight() / 2)
-    else
-        -- Draw simple hand shape
-        love.graphics.setColor(1, 0.8, 0.6, 1) -- Skin color
         
-        if self.phase == "waiting" then
-            -- Closed fist holding stick
-            love.graphics.circle("fill", self.handX, self.handY, 25)
-            -- Thumb
-            love.graphics.circle("fill", self.handX + 20, self.handY - 10, 12)
-        else
-            -- Open hand (released)
-            love.graphics.circle("fill", self.handX, self.handY, 25)
-            -- Fingers spread
-            love.graphics.circle("fill", self.handX - 15, self.handY - 15, 8)
-            love.graphics.circle("fill", self.handX + 15, self.handY - 15, 8)
-            love.graphics.circle("fill", self.handX - 20, self.handY + 5, 8)
-            love.graphics.circle("fill", self.handX + 20, self.handY + 5, 8)
+        local img = self.img_hand_vide
+        local scale = 1
+        
+        if self.phase == "caught" then
+            if self.catchResult == "tot" and self.img_hand_tot then
+                img = self.img_hand_tot
+            elseif self.catchResult == "parfait" and self.img_hand_parfait then
+                img = self.img_hand_parfait
+            elseif self.catchResult == "tard" and self.img_hand_tard then
+                img = self.img_hand_tard
+            end
         end
+        
+        -- Player hand comes from bottom
+        love.graphics.draw(img, mx, my, 0, scale, scale, 
+            img:getWidth()/2, img:getHeight()/2)
+            
     end
 end
+
+
+
 
 function Minigame:drawStick()
     if self.useImages and self.img_stick then
         love.graphics.setColor(1, 1, 1, 1)
+        
+        -- Calculate scale to match the desired width/height
+        local sx = self.stickWidth / self.img_stick:getWidth()
+        local sy = self.stickHeight / self.img_stick:getHeight()
+        
         love.graphics.draw(self.img_stick, self.stickX, self.stickY, 
-            self.stickRotation, 1, 1,
+            self.stickRotation, sx, sy,
             self.img_stick:getWidth() / 2, self.img_stick:getHeight() / 2)
     else
         -- Draw simple stick shape
@@ -183,24 +239,82 @@ function Minigame:drawStick()
     --     self.stickHeight + self.hitboxPadding * 2)
 end
 
+
 function Minigame:mousepressed(x, y, button)
+    -- Click anywhere to catch, as long as it's falling (or near falling?)
     if button == 1 and self.phase == "falling" then
-        -- Check if click is within generous hitbox
-        local hitboxLeft = self.stickX - self.stickWidth/2 - self.hitboxPadding
-        local hitboxRight = self.stickX + self.stickWidth/2 + self.hitboxPadding
-        local hitboxTop = self.stickY - self.stickHeight/2 - self.hitboxPadding
-        local hitboxBottom = self.stickY + self.stickHeight/2 + self.hitboxPadding
+        -- Timing based catch
+        -- catchY is where the hand is (550).
+        -- stickY is the center of the stick.
         
-        if x >= hitboxLeft and x <= hitboxRight and 
-           y >= hitboxTop and y <= hitboxBottom then
-            -- Caught the stick!
-            self.phase = "caught"
-            self.feedbackTimer = 0.5 -- Show success message for 0.5 seconds
-            self.feedbackMessage = "CAUGHT!"
-            -- Stop stick motion
+        -- If stickY is exactly catchY, the center of the stick is in the hand.
+        local offset = self.stickY - self.catchY
+        local threshold = self.stickHeight * 0.4 -- Allow capturing within 40% of stick height
+        
+        -- stickY increases as it falls.
+        -- If stickY < catchY, stick is above hand (offset negative).
+        -- If stickY > catchY, stick is below hand (offset positive).
+        
+        -- Wait, earlier I said:
+        -- stickY > catchY (stick lower than hand) -> Stick fell too far -> Late?
+        -- stickY < catchY (stick higher than hand) -> Stick not reached yet -> Early?
+        
+        -- Let's refine based on "Tot / Parfait / Tard" images:
+        -- "Tot" (Early) = Catching the BOTTOM of the stick? 
+        --   If we click EARLY, the stick hasn't fallen enough. Stick is HIGH. stickY < catchY.
+        --   So we catch the BOTTOM of the stick physically? Yes, hand is at 550, stick center is at 400. Hand touches bottom of stick.
+        
+        -- "Tard" (Late) = Catching the TOP of the stick?
+        --   If we click LATE, the stick has fallen TOO MUCH. Stick is LOW. stickY > catchY.
+        --   Hand is at 550, stick center is at 700. Hand touches top of stick.
+        
+        if math.abs(offset) < threshold + 20 then -- Add a bit of absolute tolerance
+            -- Caught!
+            self.phase = "caught" 
+            self.feedbackTimer = 1.0
+            
+            if offset < -threshold/2 then
+                -- Stick is above hand (Offset negative) -> Hand catches bottom -> EARLY
+                self.catchResult = "tot"
+                self.feedbackMessage = "EARLY!"
+            elseif offset > threshold/2 then
+                 -- Stick is below hand (Offset positive) -> Hand catches top -> LATE
+                self.catchResult = "tard"
+                self.feedbackMessage = "LATE!"
+            else
+                self.catchResult = "parfait"
+                self.feedbackMessage = "PERFECT!"
+            end
+            
+            -- Stop stick
             self.stickVelocity = 0
             self.stickRotationSpeed = 0
+            
+        else
+            -- Missed (too early or too late, outside range)
+            -- For now, if we click way too early, do we punish? 
+            -- User said "on ne l attrape plus quand on veut... timing precis".
+            -- If we miss the window, maybe we just don't catch it and it falls to ground?
+            -- Or we fail immediately? 
+            -- Usually spam clicking is bad. Let's make it fail if we click?
+            -- Or just ignore clicks that are WAY off?
+            -- Let's ignore clicks that are way off (e.g. stick is still at top of screen).
+            
+            -- If stick is somewhat close but we missed the threshold:
+             if self.stickY > self.catchY + self.stickHeight then
+                 -- Actually if it's past us, we probably already triggered "missed" in update().
+             end
+             
+             -- If we click and miss, let's treat it as a "failed attempt" -> Loss?
+             -- Or just let it fall? Let's let it fall for now to avoid frustration from accidental clicks.
         end
+    end
+end
+
+
+function Minigame:leave()
+    if self.bgMusic then
+        self.bgMusic:stop()
     end
 end
 

@@ -23,6 +23,8 @@ gTransX = 0
 gTransY = 0
 
 function love.load()
+    love.audio.setVolume(1.0)
+    print("AUDIO: Volume set to 1.0")
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
     -- Load states

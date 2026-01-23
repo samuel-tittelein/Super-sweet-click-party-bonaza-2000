@@ -1,7 +1,14 @@
 -- states/GameLoop.lua
 local GameLoop = {}
 
+-- Shared HUD background for all minigames
+local HUD_IMAGE = nil
+
 function GameLoop:enter(params)
+        -- Lazy-load HUD background image used for all minigames
+        if not HUD_IMAGE then
+            HUD_IMAGE = love.graphics.newImage('assets/hud.png')
+        end
     params = params or {}
     self.score = params.score or 0
     self.difficulty = params.difficulty or 1
@@ -17,7 +24,7 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait', 'runnerDash', 'find-different', 'cute_and_creepy' }
+    local minigameList = {'taupe', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait', 'runnerDash', 'find-different', 'cute_and_creepy' }
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -183,8 +190,13 @@ function GameLoop:stopMinigame()
 end
 
 function GameLoop:draw()
-    -- Draw black background for UI template logic
-    love.graphics.clear(0, 0, 0)
+    -- Draw HUD background over the full virtual area (no clipping)
+    if HUD_IMAGE then
+        local iw, ih = HUD_IMAGE:getWidth(), HUD_IMAGE:getHeight()
+        local sx, sy = 1280 / iw, 720 / ih
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(HUD_IMAGE, 0, 0, 0, sx, sy)
+    end
 
     -- Draw Minigame
     if self.currentMinigame then

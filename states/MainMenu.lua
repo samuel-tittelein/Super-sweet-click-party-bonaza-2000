@@ -33,8 +33,9 @@ end
 function MainMenu:draw()
     local w, h = 1280, 720
     
-    Background.draw(w, h)
+    Background.drawBase(w, h)
     Scenery.draw(w, h)
+    Background.drawGarlands(w, h)
     
     -- Enlarge boxes further and center the pair with a small gap
     local boxW, boxH, gap = 380, 480, 30

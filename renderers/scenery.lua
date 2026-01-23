@@ -6,6 +6,7 @@ M.state = {
     barWidth = 60, -- wider bars
     gap = 0,       -- no gap so bars are contiguous
     maxHeight = nil,
+    time = 0,      -- accumulated time for consistent rhythm
 }
 
 function M.init(w, h)
@@ -25,16 +26,17 @@ end
 
 function M.update(dt)
     if not M.state.bars then return end
-    local t = love.timer.getTime()
+    M.state.time = M.state.time + dt
+    local t = M.state.time
     local maxH = M.state.maxHeight
     for i, b in ipairs(M.state.bars) do
-        -- dynamic frequency and amplitude modulation per bar
-        local dynFreq = b.freqBase + 0.5 * math.sin(t * 0.5 + i * 0.3)
+        -- fixed frequency for consistent rhythm
+        local freq = b.freqBase * 1.5  -- constant multiplier
         local modAmp = 0.6 + 0.4 * math.sin(t * 0.7 + i * 1.1)
         -- combine multiple waves for energetic feel
-        local raw = (math.sin(t * dynFreq + b.phase)
-                  + math.sin(t * (dynFreq * 1.7) + b.phase * 1.3)
-                  + math.sin(t * (dynFreq * 0.9) - b.phase * 0.6)) / 3
+        local raw = (math.sin(t * freq + b.phase)
+                  + math.sin(t * (freq * 1.7) + b.phase * 1.3)
+                  + math.sin(t * (freq * 0.9) - b.phase * 0.6)) / 3
         local wave = (raw * 0.5 + 0.5) * modAmp -- 0..1
         local base = 12
         local target = base + wave * (maxH - base)

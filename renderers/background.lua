@@ -5,7 +5,7 @@ local images = {
     garlandRight = nil
 }
 
-function M.draw(w, h)
+function M.drawBase(w, h)
     -- White base
     love.graphics.setColor(1, 1, 1)
     love.graphics.rectangle("fill", 0, 0, w, h)
@@ -18,7 +18,9 @@ function M.draw(w, h)
             love.graphics.circle("fill", xx, yy, 2)
         end
     end
+end
 
+function M.drawGarlands(w, h)
     -- Lazy-load garland images
     if not images.garlandLeft then
         images.garlandLeft = love.graphics.newImage('assets/guilande.png')
@@ -37,6 +39,11 @@ function M.draw(w, h)
     local targetW = w * 0.38
     local leftW, leftH = drawScaled(images.garlandLeft, 0, 0, targetW)
     drawScaled(images.garlandRight, w - targetW, 0, targetW)
+end
+
+function M.draw(w, h)
+    M.drawBase(w, h)
+    M.drawGarlands(w, h)
 end
 
 return M

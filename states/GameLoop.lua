@@ -60,14 +60,16 @@ function GameLoop:nextLevel()
     if shopInterval < 3 then shopInterval = 3 end -- Minimum logic if few games
 
     if self.mode ~= 'single' and self.gamesPlayedSinceShop >= shopInterval then
+        self:stopMinigame()
         gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
         return
     end
 
-    -- if self.mode == 'single' and self.minigameCount > 0 then
-    --     gStateMachine:change('selector')
-    --     return
-    -- end
+    if self.mode == 'single' and self.minigameCount > 0 then
+        self:stopMinigame()
+        gStateMachine:change('selector')
+        return
+    end
 
     local idx
     if self.mode == 'single' then
@@ -76,18 +78,19 @@ function GameLoop:nextLevel()
             self.difficulty = math.floor(self.difficulty) + 1
         end
     else
-        -- Sequential loop: taupe -> popup -> taupe...
-        -- availableMinigames has indices 1 (taupe) and 2 (popup) (and others if loaded)
-        -- We want to loop 1, 2, 1, 2...
-
-        if self.currentMinigameIndex == 0 then
-            idx = 1
+        -- Random selection from ALL available games
+        local numGames = #self.availableMinigames
+        if numGames > 0 then
+            repeat
+                idx = math.random(numGames)
+            until numGames <= 1 or idx ~= self.currentMinigameIndex
         else
-            idx = self.currentMinigameIndex + 1
-            if idx > 2 then
-                idx = 1
-                self.difficulty = math.floor(self.difficulty) + 1
-            end
+            idx = 1
+        end
+
+        -- Increment difficulty every few games instead of every loop
+        if self.minigameCount % numGames == 0 then
+            self.difficulty = math.floor(self.difficulty) + 1
         end
     end
 
@@ -118,6 +121,7 @@ function GameLoop:update(dt)
         local result = self.currentMinigame:update(dt)
 
         if result == 'won' then
+            self:stopMinigame()
             self.phase = 'result'
             self.resultMessage = "YOU WON!"
             self.timer = 5 -- Show result for 5s (Intermission)
@@ -127,8 +131,14 @@ function GameLoop:update(dt)
             local bonus = self.currentMinigame.clickBonus or 10
             gClickCount = gClickCount + bonus
 
+            -- Record win for unlocks
+            if self.currentMinigame.name then
+                gUnlockedMinigames[self.currentMinigame.name] = true
+            end
+
             -- self.difficulty = self.difficulty + 0.1 -- Removing old increment
         elseif result == 'lost' then
+            self:stopMinigame()
             gLives = gLives - 1
             if gLives <= 0 then
                 gStateMachine:change('lost', { score = self.score })
@@ -144,6 +154,16 @@ function GameLoop:update(dt)
         if self.timer <= 0 then
             self:nextLevel()
         end
+    end
+end
+
+function GameLoop:exit()
+    self:stopMinigame()
+end
+
+function GameLoop:stopMinigame()
+    if self.currentMinigame and self.currentMinigame.exit then
+        self.currentMinigame:exit()
     end
 end
 
@@ -178,7 +198,9 @@ function GameLoop:draw()
         local mgScale = gameW / 1280
         love.graphics.scale(mgScale, mgScale)
 
+        love.graphics.push("all") -- Protect global state (fonts, line width, etc.)
         self.currentMinigame:draw()
+        love.graphics.pop()
 
         love.graphics.pop()
         love.graphics.setScissor()

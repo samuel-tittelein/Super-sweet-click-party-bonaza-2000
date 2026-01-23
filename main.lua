@@ -11,6 +11,7 @@ gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
 gDevMode = true
 gLives = 3
+gUnlockedMinigames = {} -- Track beats for item unlocks
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280
@@ -138,6 +139,7 @@ function gResetGame()
     gClickPower = 1
     gGameLost = false
     gLives = 3
+    gUnlockedMinigames = {} -- Clear unlocks on reset
 
     -- Reset Items by clearing them from package.loaded
     -- This forces them to be re-required and thus re-initialized (bought = false)

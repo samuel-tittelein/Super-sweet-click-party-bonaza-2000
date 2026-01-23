@@ -10,12 +10,12 @@ function StateMachine.new(states)
 end
 
 function StateMachine:change(stateName, params)
-    -- Exit current state
-    if #self.stack > 0 then
+    -- Exit all states in reverse order
+    while #self.stack > 0 do
         if self.stack[#self.stack].exit then
             self.stack[#self.stack]:exit()
         end
-        self.stack[#self.stack] = nil -- Pop
+        table.remove(self.stack)
     end
 
     self:push(stateName, params)

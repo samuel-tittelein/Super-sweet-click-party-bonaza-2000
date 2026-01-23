@@ -15,10 +15,12 @@ function Minigame:enter(difficulty)
     self.handY = love.graphics.getHeight() - self.handH - 285
     self.won = false
     self.lost = false
+    self.lostTimer = 0 -- reset du lostTimer
 end
 
 function Minigame:update(dt)
     if self.state == "waiting" then
+        self.lostTimer = 0 -- reset du lostTimer si retour à waiting
         self.timer = self.timer + dt
         if self.timer >= self.winTime then
             self.state = "won"
@@ -30,17 +32,15 @@ function Minigame:update(dt)
         self.lost = true
         self.lostTimer = (self.lostTimer or 0) + dt
         if self.lostTimer >= 1 then -- délai d'1 seconde avant de retourner "lost"
-        return "lost"
-    end
+            return "lost"
+        end
     end
     return nil
 end
 
 function Minigame:mousepressed(x, y, button)
     if self.state == "waiting" and button == 1 then
-        if x >= self.handX and x <= self.handX + self.handW and y >= self.handY and y <= self.handY + self.handH then
-            self.state = "lost"
-        end
+        self.state = "lost"
     end
 end
 

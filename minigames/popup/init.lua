@@ -72,7 +72,7 @@ function Minigame:draw()
     
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf("CLOSE ALL POPUPS!", 0, 20, 1280, "center")
-    love.graphics.printf("TIME: " .. math.ceil(self.timer), 0, 50, 1280, "center")
+    love.graphics.printf("TIME: " .. math.ceil(self.timer) .. " | LEVEL: " .. self.difficulty, 0, 50, 1280, "center")
 
     -- Draw popups (reverse order to draw top-most last usually, but simple list is fine)
     -- Actually for clicking, last drawn is "on top".

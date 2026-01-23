@@ -1,3 +1,4 @@
+
 local Minigame = {}
 
 -- Cute and Creepy Minigame
@@ -7,10 +8,32 @@ local Minigame = {}
 function Minigame:enter(difficulty)
     self.difficulty = difficulty or 1
     
+    -- Load images
+    local basePath = "minigames/cute_and_creepy/assets/images/"
+    self.backgroundImage = love.graphics.newImage(basePath .. "background.png")
+    
+    -- Load cute images
+    self.cuteImages = {
+        love.graphics.newImage(basePath .. "cute/calamar.png"),
+        love.graphics.newImage(basePath .. "cute/piaf.png"),
+        love.graphics.newImage(basePath .. "cute/penguin.png"),
+        love.graphics.newImage(basePath .. "cute/star.png"),
+        love.graphics.newImage(basePath .. "cute/waifu.png"),
+    }
+    
+    -- Load creepy images
+    self.creepyImages = {
+        love.graphics.newImage(basePath .. "creepy/evil.png"),
+        love.graphics.newImage(basePath .. "creepy/skeleton.png"),
+        love.graphics.newImage(basePath .. "creepy/skull.png"),
+        love.graphics.newImage(basePath .. "creepy/troll_face.png"),
+        love.graphics.newImage(basePath .. "creepy/clown.png"),
+    }
+    
     -- Difficulty settings
-    -- Grid size: 4x5 at difficulty 1, 4x6 at difficulty 3, 4x7 at difficulty 5, etc.
+    -- Grid size: 3 lines for items
     self.gridCols = 5 + math.floor((self.difficulty - 1) * 0.5)
-    self.gridRows = 4
+    self.gridRows = 3
     -- Safety clamps to avoid tiny grids if difficulty is passed as 0/nil
     if not self.gridCols or self.gridCols < 5 then self.gridCols = 5 end
     if not self.gridCols or self.gridCols > 7 then self.gridCols = 7 end
@@ -43,23 +66,21 @@ end
 
 function Minigame:generateItems()
     local items = {}
-    local cuteNames = {"Puppy", "Kitten", "Baby", "Bunny", "Flower", "Butterfly", "Heart", "Angel"}
-    local creepyNames = {"Ghost", "Skull", "Spider", "Zombie", "Witch", "Monster", "Demon", "Devil"}
     
     local cutePerGrid = math.ceil(self.gridSize / 2)
     local creepyPerGrid = self.gridSize - cutePerGrid
     
     -- Create cute items
     for i = 1, cutePerGrid do
-        local idx = ((i - 1) % #cuteNames) + 1
+        local imgIdx = ((i - 1) % #self.cuteImages) + 1
         table.insert(items, {
             id = i,
             type = "cute",
-            name = cuteNames[idx],
+            image = self.cuteImages[imgIdx],
             x = 0,
             y = 0,
-            w = 80,
-            h = 60,
+            w = 160,
+            h = 160,
             placed = false,
             placed_in = nil
         })
@@ -67,15 +88,15 @@ function Minigame:generateItems()
     
     -- Create creepy items
     for i = 1, creepyPerGrid do
-        local idx = ((i - 1) % #creepyNames) + 1
+        local imgIdx = ((i - 1) % #self.creepyImages) + 1
         table.insert(items, {
             id = cutePerGrid + i,
             type = "creepy",
-            name = creepyNames[idx],
+            image = self.creepyImages[imgIdx],
             x = 0,
             y = 0,
-            w = 80,
-            h = 60,
+            w = 160,
+            h = 160,
             placed = false,
             placed_in = nil
         })
@@ -87,19 +108,28 @@ function Minigame:generateItems()
         items[i], items[j] = items[j], items[i]
     end
     
-    -- Position items in grid
-    local gridItemWidth = 100
-    local gridItemHeight = 80
-    local startX = 100
-    local startY = 100
-    local spacingX = 120
-    local spacingY = 100
+    -- Position items in grid (3 lines, centered horizontally)
+    local gridItemWidth = 120
+    local gridItemHeight = 120
+    local spacingX = 150
+    local spacingY = 140
+    
+    -- Calculate total width needed and center horizontally
+    local totalWidth = (self.gridCols * spacingX) - (spacingX - gridItemWidth)
+    local startX = (1280 - totalWidth) / 2
+    local startY = 70
     
     for idx, item in ipairs(items) do
         local row = math.floor((idx - 1) / self.gridCols)
         local col = (idx - 1) % self.gridCols
         item.x = startX + col * spacingX
         item.y = startY + row * spacingY
+        
+        -- Store original image dimensions for aspect ratio
+        if item.image then
+            item.imgW = item.image:getWidth()
+            item.imgH = item.image:getHeight()
+        end
     end
     
     return items
@@ -107,7 +137,7 @@ end
 
 function Minigame:initializeCategories()
     local w, h = 1280, 720
-    local zoneHeight = 180
+    local zoneHeight = 240
     local y = h - zoneHeight -- align to bottom
     local halfW = w / 2
     return {
@@ -177,57 +207,60 @@ function Minigame:update(dt)
 end
 
 function Minigame:draw()
-    -- Background
-    love.graphics.setColor(1, 1, 1)
+    -- Clear light background
+    love.graphics.setColor(0.95, 0.95, 0.95)
     love.graphics.rectangle("fill", 0, 0, 1280, 720)
     
-    -- Header
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.setFont(love.graphics.newFont(28))
-    love.graphics.printf("CUTE AND CREEPY", 0, 20, 1280, "center")
-    
-    -- Timer and stats
-    love.graphics.setFont(love.graphics.newFont(16))
-    love.graphics.printf("TIME: " .. math.ceil(math.max(0, self.timer)), 50, 70, 200, "left")
-    
-    -- Draw categories (drop zones)
-    for name, cat in pairs(self.categories) do
-        love.graphics.setColor(cat.color[1], cat.color[2], cat.color[3])
-        love.graphics.rectangle("fill", cat.x, cat.y, cat.w, cat.h)
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.setLineWidth(3)
-        love.graphics.rectangle("line", cat.x, cat.y, cat.w, cat.h)
+    -- Background image at bottom without deformation
+    if self.backgroundImage then
+        local bgW = self.backgroundImage:getWidth()
+        local bgH = self.backgroundImage:getHeight()
+        local scale = 1280 / bgW  -- Scale to fit width
+        local scaledH = bgH * scale
+        local bgY = 720 - scaledH  -- Position at bottom
         
-        -- Category label
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.setFont(love.graphics.newFont(18))
-        love.graphics.printf(cat.name, cat.x, cat.y + 10, cat.w, "center")
-
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(self.backgroundImage, 0, bgY, 0, scale, scale)
     end
     
-    -- Draw unplaced items
-    love.graphics.setFont(love.graphics.newFont(14))
+    -- Draw timer as dial
+    self:drawTimerDial(80, 80)
+    
+    -- Draw categories (drop zones - invisible but functional)
+    -- Les zones existent toujours pour la logique mais ne sont plus dessinées
+    -- car le background affiche déjà cute vs creepy
+    
+    -- Draw unplaced items with images
     for _, item in ipairs(self.items) do
         if not item.placed then
-            local itemType = item.type == "cute" and "CUTE" or "CREEPY"
-            
-            -- Item rectangle
-            if self.draggingItem == item then
-                love.graphics.setColor(1, 1, 0, 0.8)
+            -- Draw image if available
+            if item.image and item.imgW and item.imgH then
+                if self.draggingItem == item then
+                    love.graphics.setColor(1, 1, 1, 0.8)
+                else
+                    love.graphics.setColor(1, 1, 1, 1)
+                end
+                
+                -- Draw image without deformation (preserve aspect ratio)
+                local scale = math.min(item.w / item.imgW, item.h / item.imgH)
+                local drawW = item.imgW * scale
+                local drawH = item.imgH * scale
+                local offsetX = (item.w - drawW) / 2
+                local offsetY = (item.h - drawH) / 2
+                
+                love.graphics.draw(item.image, item.x + offsetX, item.y + offsetY, 0, scale, scale)
             else
-                love.graphics.setColor(0.8, 0.8, 0.8)
+                -- Fallback if image missing
+                if self.draggingItem == item then
+                    love.graphics.setColor(1, 1, 0, 0.8)
+                else
+                    love.graphics.setColor(0.8, 0.8, 0.8)
+                end
+                love.graphics.rectangle("fill", item.x, item.y, item.w, item.h)
+                love.graphics.setColor(0, 0, 0)
+                love.graphics.setLineWidth(2)
+                love.graphics.rectangle("line", item.x, item.y, item.w, item.h)
             end
-            love.graphics.rectangle("fill", item.x, item.y, item.w, item.h)
-            
-            -- Item border
-            love.graphics.setColor(0, 0, 0)
-            love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", item.x, item.y, item.w, item.h)
-            
-            -- Item text
-            love.graphics.setColor(0, 0, 0)
-            love.graphics.printf(item.name, item.x, item.y + 8, item.w, "center")
-            love.graphics.printf("(" .. itemType .. ")", item.x, item.y + 30, item.w, "center")
         end
     end
 end
@@ -282,4 +315,57 @@ function Minigame:keypressed(key)
     if key == 'l' then self.lost = true end -- Debug
 end
 
+function Minigame:drawTimerDial(x, y)
+    local radius = 35
+    local timeRemaining = math.max(0, self.timer)
+    local timePercent = math.min(1, timeRemaining / self.timeLimit)
+    
+    -- Draw outer circle (background)
+    love.graphics.setColor(0.2, 0.2, 0.2)
+    love.graphics.circle("fill", x, y, radius)
+    
+    -- Draw progress arc (colored based on time)
+    local color_r = (1 - timePercent) * 0.9 + 0.1  -- Red when time is low
+    local color_g = timePercent * 0.8 + 0.2        -- Green when time is high
+    local color_b = 0.2
+    love.graphics.setColor(color_r, color_g, color_b)
+    
+    -- Draw arc from top, going clockwise
+    local startAngle = math.pi * 1.5  -- Start at top (12 o'clock)
+    local endAngle = startAngle + (timePercent * math.pi * 2)
+    
+    -- Draw filled arc using multiple triangles
+    local segments = 30
+    love.graphics.setColor(color_r, color_g, color_b, 0.8)
+    
+    for i = 0, segments do
+        local angle1 = startAngle + (i / segments) * (endAngle - startAngle)
+        local angle2 = startAngle + ((i + 1) / segments) * (endAngle - startAngle)
+        
+        local x1 = x + math.cos(angle1) * radius
+        local y1 = y + math.sin(angle1) * radius
+        local x2 = x + math.cos(angle2) * radius
+        local y2 = y + math.sin(angle2) * radius
+        
+        love.graphics.polygon("fill", x, y, x1, y1, x2, y2)
+    end
+    
+    -- Draw inner white circle
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.circle("fill", x, y, radius * 0.6)
+    
+    -- Draw border
+    love.graphics.setColor(0.2, 0.2, 0.2)
+    love.graphics.setLineWidth(2)
+    love.graphics.circle("line", x, y, radius)
+    
+    -- Draw time text in center
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.setFont(love.graphics.newFont(14))
+    local timeText = math.ceil(timeRemaining)
+    local textW = love.graphics.getFont():getWidth(timeText)
+    love.graphics.print(timeText, x - textW / 2, y - 7)
+end
+
 return Minigame
+

@@ -4,312 +4,278 @@ function Minigame:enter(difficulty)
     self.difficulty = difficulty or 1
     self.won = false
     self.lost = false
-    self.clickBonus = 40
     
-    -- Time limit for zombies to reach player
+    -- Paramètres de temps et caméra
     self.timeLimit = math.max(8, 12 - difficulty * 0.3)
     self.timer = self.timeLimit
-    
-    -- Camera settings
-    self.cameraYaw = 0 -- Rotation angle in radians
-    self.fov = math.pi / 2 -- 90 degrees field of view
+    self.cameraYaw = 0 
+    self.fov = math.pi / 2 
     self.mouseSensitivity = 0.003
     
-    -- Player position (center of world)
-    self.playerX = 640
-    self.playerY = 360
-    
-    -- Zombie properties
+    -- Propriétés des Zombies
     self.zombies = {}
     self.zombieRadius = 30
-    self.maxDistance = 500 -- Starting distance from player
-    self.minDistance = 50 -- Distance at which zombie "reaches" player
+    self.maxDistance = 500 
+    self.minDistance = 50 
     
-    -- Spawn zombies based on difficulty
     local zombieCount = 3 + math.floor(difficulty * 0.3)
-    local approachSpeed = 30 + difficulty * 8 -- Pixels per second, scales faster with difficulty
-    
-    -- Calculate reachable angle range based on camera rotation limits
-    -- Camera can rotate from -pi/2 to pi/2 based on mouse position
-    local maxCameraYaw = math.pi / 2
-    local minCameraYaw = -math.pi / 2
-    -- With FOV of pi/2, the reachable angles are:
-    local minReachableAngle = minCameraYaw - self.fov / 2
-    local maxReachableAngle = maxCameraYaw + self.fov / 2
-    local angleRange = maxReachableAngle - minReachableAngle
+    local approachSpeed = 30 + difficulty * 8 
     
     for i = 1, zombieCount do
-        -- Spawn zombies only within reachable angle range
-        local angle = minReachableAngle + (i / zombieCount) * angleRange
+        -- 360 degree spawning
+        local angle = (i / zombieCount) * (math.pi * 2) - math.pi
         table.insert(self.zombies, {
-            angle = angle, -- Angle from player (radians)
-            distance = self.maxDistance, -- Distance from player
-            speed = approachSpeed + math.random(-5, 5), -- Speed variation
-            state = 'active', -- 'active', 'hit', 'dead'
+            angle = angle,
+            distance = self.maxDistance,
+            speed = approachSpeed + math.random(-5, 5),
+            state = 'walking',
             hitTimer = 0,
-            size = 1.0 + (math.random() - 0.5) * 0.2 -- Size variation
+            attackTimer = 0,
+            size = 1.0 + (math.random() - 0.5) * 0.2,
+            animTimer = math.random() * 1.0,
+            currentFrame = 1
         })
     end
     
-    -- Shooting feedback
     self.flashTimer = 0
-    self.flashColor = {1, 0, 0}
-    self.crosshairSize = 20
-    
-    -- Score tracking
     self.zombiesKilled = 0
     self.totalZombies = zombieCount
-    self.shotsFired = 0
+    self.crosshairSize = 20
     
-    -- Hide system cursor and track mouse
     love.mouse.setVisible(false)
-    self.mouseX = 640
-    self.mouseY = 360
+    self.mouseX, self.mouseY = 640, 360
     
-    -- Try to load zombie image (fallback to shapes)
+    -- Gestion des Assets
+    self.img_walk = nil
+    self.img_attack = nil
+    self.quads_walk = {}
+    self.quads_attack = {}
     self.useImages = false
-    local success, zombieImg = pcall(love.graphics.newImage, "minigames/zombie-shooter/assets/images/zombie.png")
-    if success then
-        self.img_zombie = zombieImg
+
+    -- FONCTION CORRIGÉE : Utilisation correcte des arguments et marge de sécurité
+    local function generateQuads(img, quadsTable, frameWidth, frameHeight)
+        if img then
+            local w, h = img:getDimensions()
+            
+            -- Use arguments if provided, otherwise default
+            local fW = frameWidth or 32
+            local fH = frameHeight or 48
+            
+            local numFrames = math.floor(w / fW)
+            for i = 0, numFrames - 1 do
+                -- Reduce height slightly (0.1) to avoid bleeding, but keep the pixel visible
+                -- 'nearest' filter might still show the full pixel if center is sampled
+                table.insert(quadsTable, love.graphics.newQuad(i * fW, 0, fW, fH - 0.01, w, h))
+            end
+            return numFrames
+        end
+        return 0
+    end
+    
+    local assetPath = "minigames/zombie-shooter/assets/"
+    
+    -- Chargement avec FILTRE NEAREST et WARP CLAMPZERO pour éviter l'étirement
+    if love.filesystem.getInfo(assetPath .. "zombie_walk.png") then
+        self.img_walk = love.graphics.newImage(assetPath .. "zombie_walk.png")
+        self.img_walk:setFilter("nearest", "nearest")
+        -- Use clampzero if available to make edge transparent, otherwise clamp
+        pcall(function() self.img_walk:setWrap("clampzero", "clampzero") end) 
+        generateQuads(self.img_walk, self.quads_walk, 32, 48)
         self.useImages = true
     end
-end
-
-function Minigame:exit()
-    love.mouse.setVisible(true)
-end
-
-function Minigame:mousemoved(x, y, dx, dy)
-    self.mouseX = x
-    self.mouseY = y
     
-    -- Update camera yaw based on mouse X position
-    -- Map mouse X (0-1280) to yaw rotation
-    local centerX = 640
-    local mouseOffset = x - centerX
-    self.cameraYaw = (mouseOffset / centerX) * (self.fov / 2) * 2 -- Scale to allow full rotation
+    if love.filesystem.getInfo(assetPath .. "zombie_attack.png") then
+         self.img_attack = love.graphics.newImage(assetPath .. "zombie_attack.png")
+         self.img_attack:setFilter("nearest", "nearest")
+         pcall(function() self.img_attack:setWrap("clampzero", "clampzero") end)
+         generateQuads(self.img_attack, self.quads_attack, 32, 48)
+    end
+    
+    -- Load Audio
+    if love.filesystem.getInfo(assetPath .. "zombie_death.ogg") then
+        self.sndDeath = love.audio.newSource(assetPath .. "zombie_death.ogg", "static")
+    end
+    
+    love.mouse.setRelativeMode(true)
+    
+    -- Sky Stars
+    self.stars = {}
+    for i = 1, 200 do
+        table.insert(self.stars, {
+            x = math.random(0, 1280),
+            y = math.random(0, 360), -- Top half of screen
+            size = math.random(1, 2),
+            alpha = math.random(100, 255) / 255
+        })
+    end
 end
 
 function Minigame:update(dt)
     if self.won then return "won" end
     if self.lost then return "lost" end
     
-    -- Countdown timer
     self.timer = self.timer - dt
+    if self.flashTimer > 0 then self.flashTimer = self.flashTimer - dt end
     
-    -- Update flash timer
-    if self.flashTimer > 0 then
-        self.flashTimer = self.flashTimer - dt
-    end
-    
-    -- Update zombies
     local activeZombies = 0
     for _, zombie in ipairs(self.zombies) do
-        if zombie.state == 'active' then
-            -- Move zombie closer
+        -- Animation
+        zombie.animTimer = zombie.animTimer + dt
+        local animSpeed = (zombie.state == 'attacking') and 0.1 or 0.15
+        local quads = (zombie.state == 'attacking' and #self.quads_attack > 0) and self.quads_attack or self.quads_walk
+        
+        if #quads > 0 and zombie.animTimer >= animSpeed then
+            zombie.animTimer = zombie.animTimer - animSpeed
+            zombie.currentFrame = (zombie.currentFrame % #quads) + 1
+        end
+
+        if zombie.state == 'walking' then
             zombie.distance = zombie.distance - zombie.speed * dt
-            
-            -- Check if zombie reached player
             if zombie.distance <= self.minDistance then
-                self.lost = true
-                return "lost"
+                zombie.state = 'attacking'
+                zombie.currentFrame = 1
             end
-            
+            activeZombies = activeZombies + 1
+        elseif zombie.state == 'attacking' then
+            zombie.attackTimer = zombie.attackTimer + dt
+            if zombie.attackTimer > 0.5 then self.lost = true end
             activeZombies = activeZombies + 1
         elseif zombie.state == 'hit' then
             zombie.hitTimer = zombie.hitTimer - dt
-            if zombie.hitTimer <= 0 then
-                zombie.state = 'dead'
-            end
+            if zombie.hitTimer <= 0 then zombie.state = 'dead' end
         end
     end
     
-    -- Check win condition
-    if activeZombies == 0 and self.zombiesKilled == self.totalZombies then
-        self.won = true
-        return "won"
-    end
-    
-    -- Lose condition: time out
-    if self.timer <= 0 then
-        self.lost = true
-        return "lost"
-    end
-    
-    return nil
+    if activeZombies == 0 and self.zombiesKilled == self.totalZombies then self.won = true end
+    if self.timer <= 0 then self.lost = true end
 end
 
+function Minigame:drawZombies()
+    local sortedZombies = {}
+    for i, zombie in ipairs(self.zombies) do
+        if zombie.state ~= 'dead' then
+            table.insert(sortedZombies, zombie)
+        end
+    end
+    table.sort(sortedZombies, function(a, b) return a.distance > b.distance end)
+    
+    for _, zombie in ipairs(sortedZombies) do
+        local relativeAngle = zombie.angle - self.cameraYaw
+        while relativeAngle > math.pi do relativeAngle = relativeAngle - 2 * math.pi end
+        while relativeAngle < -math.pi do relativeAngle = relativeAngle + 2 * math.pi end
+        
+        if math.abs(relativeAngle) < self.fov / 2 then
+            local screenX = 640 + (relativeAngle / (self.fov / 2)) * 640
+            local scale = math.max(0.2, math.min((self.maxDistance / zombie.distance) * zombie.size, 3))
+            local screenY = 360 + (1 - zombie.distance / self.maxDistance) * 150 -- Un peu plus bas
+            
+            if zombie.state == 'hit' then love.graphics.setColor(1, 0, 0, 1)
+            else love.graphics.setColor(1, 1, 1, 1) end
+            
+            if self.useImages then
+                local img = (zombie.state == 'attacking' and self.img_attack) or self.img_walk
+                local quads = (zombie.state == 'attacking' and #self.quads_attack > 0) and self.quads_attack or self.quads_walk
+                
+                if img and #quads > 0 then
+                    local quad = quads[math.min(zombie.currentFrame, #quads)]
+                    local _, _, qw, qh = quad:getViewport()
+                    
+                    -- DESSIN CORRIGÉ : math.floor et ancrage au pied (qh)
+                    love.graphics.draw(img, quad, 
+                        math.floor(screenX), 
+                        math.floor(screenY), 
+                        0, 
+                        scale, scale, 
+                        math.floor(qw / 2), 
+                        qh
+                    )
+                end
+            end
+        end
+    end
+end
+
+-- Reste des fonctions de dessin (draw, HUD, etc.)
 function Minigame:draw()
     -- Background (dark/night)
     love.graphics.setColor(0.05, 0.05, 0.1, 1)
     love.graphics.rectangle("fill", 0, 0, 1280, 720)
     
-    -- Draw ground/horizon
+    -- Draw Sky Stars
+    if self.stars then
+        love.graphics.setColor(1, 1, 1)
+        for _, star in ipairs(self.stars) do
+            love.graphics.setColor(1, 1, 1, star.alpha)
+            love.graphics.circle("fill", star.x, star.y, star.size)
+        end
+    end
+    
     love.graphics.setColor(0.1, 0.15, 0.1, 1)
     love.graphics.rectangle("fill", 0, 360, 1280, 360)
     
-    -- Draw zombies in pseudo-3D
     self:drawZombies()
     
-    -- Red flash on hit
     if self.flashTimer > 0 then
-        local alpha = self.flashTimer / 0.2
-        love.graphics.setColor(1, 0, 0, alpha * 0.3)
+        love.graphics.setColor(1, 0, 0, (self.flashTimer / 0.2) * 0.3)
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
     end
     
-    -- Draw crosshair
     self:drawCrosshair()
-    
-    -- HUD
     self:drawHUD()
 end
 
-function Minigame:drawZombies()
-    -- Sort zombies by distance (far to near for proper layering)
-    local sortedZombies = {}
-    for i, zombie in ipairs(self.zombies) do
-        if zombie.state ~= 'dead' then
-            table.insert(sortedZombies, {index = i, zombie = zombie})
-        end
-    end
-    table.sort(sortedZombies, function(a, b) return a.zombie.distance > b.zombie.distance end)
-    
-    -- Draw each zombie if in FOV
-    for _, entry in ipairs(sortedZombies) do
-        local zombie = entry.zombie
-        
-        -- Calculate relative angle to zombie from camera
-        local relativeAngle = zombie.angle - self.cameraYaw
-        
-        -- Normalize angle to -pi to pi
-        while relativeAngle > math.pi do relativeAngle = relativeAngle - 2 * math.pi end
-        while relativeAngle < -math.pi do relativeAngle = relativeAngle + 2 * math.pi end
-        
-        -- Check if zombie is within FOV
-        if math.abs(relativeAngle) < self.fov / 2 then
-            -- Calculate screen position based on angle
-            local screenX = 640 + (relativeAngle / (self.fov / 2)) * 640
-            
-            -- Calculate size based on distance (perspective)
-            local scale = (self.maxDistance / zombie.distance) * zombie.size
-            scale = math.max(0.2, math.min(scale, 3))
-            
-            -- Calculate Y position (zombies appear lower when closer)
-            local screenY = 360 + (1 - zombie.distance / self.maxDistance) * 100
-            
-            -- Draw zombie
-            if zombie.state == 'hit' then
-                love.graphics.setColor(1, 0, 0, 1) -- Flash red when hit
-            else
-                love.graphics.setColor(0.3, 0.6, 0.3, 1) -- Green for zombie
-            end
-            
-            if self.useImages then
-                local w = self.img_zombie:getWidth()
-                local h = self.img_zombie:getHeight()
-                love.graphics.draw(self.img_zombie, screenX, screenY, 0, 
-                    scale * 0.8, scale * 0.8, w / 2, h / 2)
-            else
-                -- Placeholder: simple zombie shape
-                local size = self.zombieRadius * scale
-                
-                -- Body
-                love.graphics.circle("fill", screenX, screenY, size)
-                
-                -- Eyes
-                love.graphics.setColor(1, 0, 0, 1)
-                love.graphics.circle("fill", screenX - size * 0.3, screenY - size * 0.2, size * 0.15)
-                love.graphics.circle("fill", screenX + size * 0.3, screenY - size * 0.2, size * 0.15)
-                
-                -- Arms (reaching forward)
-                love.graphics.setColor(0.2, 0.5, 0.2, 1)
-                love.graphics.rectangle("fill", screenX - size * 1.2, screenY - size * 0.3, 
-                    size * 0.3, size * 0.8)
-                love.graphics.rectangle("fill", screenX + size * 0.9, screenY - size * 0.3, 
-                    size * 0.3, size * 0.8)
-            end
-        end
-    end
-end
-
 function Minigame:drawCrosshair()
-    local centerX = 640
-    local centerY = 360
-    local size = self.crosshairSize
-    
     love.graphics.setColor(1, 1, 1, 0.8)
-    love.graphics.setLineWidth(2)
-    
-    -- Cross lines
-    love.graphics.line(centerX - size, centerY, centerX + size, centerY)
-    love.graphics.line(centerX, centerY - size, centerX, centerY + size)
-    
-    -- Center dot
-    love.graphics.circle("fill", centerX, centerY, 2)
-    
-    love.graphics.setLineWidth(1)
+    love.graphics.line(640 - self.crosshairSize, 360, 640 + self.crosshairSize, 360)
+    love.graphics.line(640, 360 - self.crosshairSize, 640, 360 + self.crosshairSize)
 end
 
 function Minigame:drawHUD()
-    -- Timer
-    local timeColor = self.timer < 3 and {1, 0.3, 0.3} or {1, 1, 1}
-    love.graphics.setColor(timeColor)
-    love.graphics.printf(string.format("Time: %.1f", self.timer), 10, 20, 200, "left")
-    
-    -- Zombie count
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(string.format("Zombies: %d/%d", 
-        self.totalZombies - self.zombiesKilled, self.totalZombies), 
-        1080, 20, 200, "left")
-    
-    -- Difficulty
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    love.graphics.printf("Difficulty: " .. self.difficulty, 10, 680, 200, "left")
-    
-    -- Instructions
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Move mouse to aim, click to shoot", 0, 680, 1280, "center")
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(string.format("Time: %.1f", self.timer), 10, 20)
+    love.graphics.print(string.format("Zombies: %d/%d", self.totalZombies - self.zombiesKilled, self.totalZombies), 1100, 20)
+end
+
+function Minigame:mousemoved(x, y, dx, dy)
+    self.cameraYaw = self.cameraYaw + dx * self.mouseSensitivity
+    -- Normalize to -pi to pi for cleanliness, but wrap around instead of clamp
+    while self.cameraYaw > math.pi do self.cameraYaw = self.cameraYaw - 2 * math.pi end
+    while self.cameraYaw < -math.pi do self.cameraYaw = self.cameraYaw + 2 * math.pi end
 end
 
 function Minigame:mousepressed(x, y, button)
     if button == 1 and not self.won and not self.lost then
-        self.shotsFired = self.shotsFired + 1
-        
-        -- Check if any zombie is in crosshair (center of screen)
-        local hitZombie = false
-        local centerX = 640
-        
         for _, zombie in ipairs(self.zombies) do
-            if zombie.state == 'active' then
-                -- Calculate relative angle
+            if zombie.state == 'walking' or zombie.state == 'attacking' then
                 local relativeAngle = zombie.angle - self.cameraYaw
                 while relativeAngle > math.pi do relativeAngle = relativeAngle - 2 * math.pi end
                 while relativeAngle < -math.pi do relativeAngle = relativeAngle + 2 * math.pi end
                 
-                -- Check if in FOV and close to center
-                if math.abs(relativeAngle) < self.fov / 2 then
-                    local screenX = 640 + (relativeAngle / (self.fov / 2)) * 640
-                    local scale = (self.maxDistance / zombie.distance) * zombie.size
-                    scale = math.max(0.2, math.min(scale, 3))
-                    local hitRadius = self.zombieRadius * scale
+                local screenX = 640 + (relativeAngle / (self.fov / 2)) * 640
+                local scale = math.max(0.2, math.min((self.maxDistance / zombie.distance) * zombie.size, 3))
+                local hitRadius = self.zombieRadius * scale
+                
+                if math.abs(screenX - 640) < hitRadius then
+                    zombie.state = 'hit'
+                    zombie.hitTimer = 0.2
+                    self.zombiesKilled = self.zombiesKilled + 1
+                    self.flashTimer = 0.2
                     
-                    -- Check if crosshair is over zombie
-                    if math.abs(screenX - centerX) < hitRadius then
-                        -- Hit!
-                        zombie.state = 'hit'
-                        zombie.hitTimer = 0.2
-                        self.zombiesKilled = self.zombiesKilled + 1
-                        hitZombie = true
-                        
-                        -- Red flash feedback
-                        self.flashTimer = 0.2
-                        break
+                    if self.sndDeath then
+                        self.sndDeath:stop()
+                        self.sndDeath:play()
                     end
+                    
+                    break
                 end
             end
         end
     end
+end
+
+function Minigame:exit()
+    love.mouse.setVisible(true)
+    love.mouse.setRelativeMode(false)
 end
 
 return Minigame

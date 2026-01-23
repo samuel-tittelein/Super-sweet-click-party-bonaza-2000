@@ -23,7 +23,7 @@ function Minigame:enter(difficulty)
     self.images.spike = loadImage('minigames/runnerDash/assets/spike.png')
     self.images.block = loadImage('minigames/runnerDash/assets/block.png')
     self.images.ground = loadImage('minigames/runnerDash/assets/ground.png')
-    self.images.background = loadImage('minigames/runnerDash/assets/background.png')
+    self.images.background = loadImage('minigames/runnerDash/assets/background.jpg')
 
     
     -- Game State
@@ -58,6 +58,31 @@ function Minigame:enter(difficulty)
     self.currentPattern = 1
     
     self.musicTimer = 0
+
+    -- Music Logic
+    self.music = nil
+    -- Try mp3
+    local status, music = pcall(love.audio.newSource, 'minigames/runnerDash/assets/music.ogg', 'stream')
+    if status then
+        self.music = music
+        self.music:setLooping(true)
+        self.music:play()
+    else
+        -- Try wav as fallback just in case
+        local statusWav, musicWav = pcall(love.audio.newSource, 'minigames/runnerDash/assets/music.ogg', 'stream')
+        if statusWav then
+            self.music = musicWav
+            self.music:setLooping(true)
+            self.music:play()
+        end
+    end
+
+    -- SFX Logic
+    self.sfx = {}
+    local statusPop, popSfx = pcall(love.audio.newSource, 'minigames/runnerDash/assets/pop.ogg', 'static')
+    if statusPop then
+        self.sfx.pop = popSfx
+    end
 end
 
 function Minigame:update(dt)
@@ -66,8 +91,10 @@ function Minigame:update(dt)
     self.timer = self.timer + dt
     if self.timer >= self.winTime then
         self.gameState = "won"
+        if self.music then self.music:stop() end
         return "won"
     end
+
     
     -- Player Physics
     self.player.dy = self.player.dy + self.gravity * dt
@@ -121,6 +148,8 @@ function Minigame:update(dt)
         -- Collision
         if self:checkCollision(self.player, obs) then
             self.gameState = "lost"
+            if self.music then self.music:stop() end
+            if self.sfx.pop then self.sfx.pop:play() end
             return "lost"
         end
         
@@ -343,6 +372,14 @@ function Minigame:mousepressed(x, y, button)
             self.player.isGrounded = false
         end
     end
+end
+
+function Minigame:exit()
+    if self.music then self.music:stop() end
+end
+
+function Minigame:leave()
+    if self.music then self.music:stop() end
 end
 
 return Minigame

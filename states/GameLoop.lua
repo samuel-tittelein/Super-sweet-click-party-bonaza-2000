@@ -39,7 +39,7 @@ function GameLoop:enter(params)
 
     -- Load item definitions for UI
     self.itemDefs = {}
-    local itemFiles = {'heart', 'downgrade'} 
+    local itemFiles = { 'heart', 'downgrade' }
     -- We assume they exist in items/name/init.lua now
     for _, name in ipairs(itemFiles) do
         local success, itemTitle = pcall(require, 'items.' .. name .. '.init')
@@ -128,7 +128,15 @@ function GameLoop:update(dt)
 
             -- self.difficulty = self.difficulty + 0.1 -- Removing old increment
         elseif result == 'lost' then
-            gStateMachine:change('lost', { score = self.score })
+            gLives = gLives - 1
+            if gLives <= 0 then
+                gStateMachine:change('lost', { score = self.score })
+            else
+                self.phase = 'result'
+                self.resultMessage = "LIFE LOST!"
+                self.timer = 2 -- Short delay before next game
+                -- No score increment, no click bonus
+            end
         end
     elseif self.phase == 'result' then
         self.timer = self.timer - dt
@@ -156,7 +164,7 @@ function GameLoop:draw()
         -- Draw UI Text
         love.graphics.setColor(1, 1, 1)
         love.graphics.newFont(30)
-        love.graphics.printf("GAME UI TEMPLATE - Score (Clicks): " .. gClickCount, 0, 20, 1280, "center")
+        love.graphics.printf("Score: " .. gClickCount .. " | Lives: " .. gLives, 0, 20, 1280, "center")
 
         -- Clip and Draw Game
         love.graphics.setScissor(gTransX + (gameX * gScale), gTransY + (gameY * gScale), gameW * gScale, gameH * gScale)
@@ -188,12 +196,12 @@ function GameLoop:draw()
         love.graphics.printf("GET READY!", 0, 300, 1280, "center")
         love.graphics.printf("GET READY!", 0, 300, 1280, "center")
         love.graphics.printf(string.format("%.1f", self.timer), 0, 350, 1280, "center")
-        
+
         -- Draw UI Items
         love.graphics.setColor(1, 1, 1)
         love.graphics.newFont(20)
         love.graphics.print("BONUS ITEMS:", 1000, 150)
-        
+
         local startY = 200
         for name, def in pairs(self.itemDefs) do
             local count = gInventory[name] or 0
@@ -201,18 +209,18 @@ function GameLoop:draw()
                 -- Draw box logic (simple)
                 love.graphics.setColor(1, 1, 1, 0.5)
                 love.graphics.rectangle("fill", 1000, startY, 200, 60)
-                
+
                 love.graphics.setColor(1, 1, 1)
                 love.graphics.print(def.name .. " x" .. count, 1010, startY + 20)
-                
+
                 -- Draw logic from item definition?
                 if def.draw then
                     love.graphics.push()
                     -- icon size?
-                    def:draw(1150, startY + 10, 1) 
+                    def:draw(1150, startY + 10, 1)
                     love.graphics.pop()
                 end
-                
+
                 startY = startY + 70
             end
         end

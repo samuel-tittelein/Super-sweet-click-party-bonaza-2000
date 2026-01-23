@@ -21,7 +21,7 @@ function Shop:enter(params)
             local itemPath = itemsDir .. "." .. file
             local success, itemModule = pcall(require, itemPath)
             if success then
-                 -- If it's consumable, always add. If not, check if bought.
+                -- If it's consumable, always add. If not, check if bought.
                 if itemModule.type == 'consumable' or not itemModule.bought then
                     table.insert(availableItems, itemModule)
                 end
@@ -55,7 +55,7 @@ end
 function Shop:buyItem(item, index)
     if gClickCount >= item.price then
         gClickCount = gClickCount - item.price
-        
+
         if item.type == 'consumable' then
             gInventory[item.key] = (gInventory[item.key] or 0) + 1
         else
@@ -104,7 +104,7 @@ function Shop:buyItem(item, index)
         for i, shopItem in ipairs(self.shopItems) do
             local btnX = 200 + (i - 1) * 350
             local btnY = 400
-            
+
             -- If consumable, always show button. If not, show only if not bought.
             if shopItem.type == 'consumable' then
                 table.insert(self.buttons, Button.new("Buy", btnX, btnY, 100, 40, function()
@@ -129,7 +129,7 @@ function Shop:draw()
     love.graphics.printf("SHOP SCREEN", 0, 50, 1280, "center")
 
     love.graphics.newFont(20)
-    love.graphics.printf("Click Power: " .. gClickPower, 0, 120, 1280, "center")
+    love.graphics.printf("Click Power: " .. gClickPower .. " | Lives: " .. gLives, 0, 120, 1280, "center")
 
     -- Draw Items
     for i, item in ipairs(self.shopItems) do
@@ -157,7 +157,7 @@ function Shop:draw()
             love.graphics.printf("Price: " .. item.price, x, y + 160, 200, "center")
             if item.type == 'consumable' then
                 love.graphics.setColor(1, 1, 1)
-                love.graphics.printf("Stock: " .. (gInventory[item.key] or 0), x, y + 185, 200, "center") 
+                love.graphics.printf("Stock: " .. (gInventory[item.key] or 0), x, y + 185, 200, "center")
             end
         end
     end

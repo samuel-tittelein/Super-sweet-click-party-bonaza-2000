@@ -11,12 +11,16 @@ function MainMenu:enter()
     
     -- Init visualizer bars in scenery
     Scenery.init(w, h)
+    -- Preload speaker assets
+    Speakers.load()
 end
 
 function MainMenu:update(dt)
     self.time = self.time + dt
     -- Animate visualizer bars
     Scenery.update(dt)
+    -- Animate speakers bass pulse
+    Speakers.update(dt)
 end
 
 -- Background with dotted paper texture
@@ -32,8 +36,13 @@ function MainMenu:draw()
     Background.draw(w, h)
     Scenery.draw(w, h)
     
-    Speakers.draw(90, 230, 150, 320, false)
-    Speakers.draw(w - 260, 250, 150, 320, true)
+    -- Enlarge boxes further and center the pair with a small gap
+    local boxW, boxH, gap = 380, 480, 30
+    local leftX = (w * 0.5) - (gap * 0.5) - boxW
+    local rightX = (w * 0.5) + (gap * 0.5)
+    local y = 190
+    Speakers.draw(leftX, y, boxW, boxH, false)
+    Speakers.draw(rightX, y, boxW, boxH, true)
     
     local rects = MenuUI.draw(w, h)
     self.btn1, self.btn2, self.btn3 = rects.btn1, rects.btn2, rects.btn3

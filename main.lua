@@ -4,6 +4,7 @@ require 'conf'
 -- Global StateMachine
 local StateMachine = require 'utils.StateMachine'
 local MainMenu = require 'states.MainMenu'
+local UIEditor = require 'ui.editor'
 gStateMachine = nil
 gClickCount = 0
 gClickPower = 1
@@ -11,6 +12,7 @@ gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
 gDevMode = true
 gLives = 3
+local DEBUG_UI_EDITOR = false
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280
@@ -38,6 +40,13 @@ function love.load()
     gStateMachine = StateMachine.new(states)
     gStateMachine:change('menu')
 
+    UIEditor.init({
+        enabled = DEBUG_UI_EDITOR,
+        layoutFile = 'ui_layout.lua',
+        minSize = 24,
+        handleSize = 14
+    })
+
     updateScaling()
 end
 
@@ -58,9 +67,12 @@ end
 
 function love.update(dt)
     gStateMachine:update(dt)
+    UIEditor.update(dt)
 end
 
 function love.draw()
+    UIEditor.beginFrame()
+
     -- Apply scaling
     love.graphics.push()
     love.graphics.translate(gTransX, gTransY)
@@ -73,6 +85,7 @@ function love.draw()
     -- love.graphics.clear(0, 0, 0)
 
     gStateMachine:draw()
+    UIEditor.draw()
 
     love.graphics.setScissor()
     love.graphics.pop()
@@ -87,6 +100,8 @@ function love.draw()
 end
 
 function love.keypressed(key)
+    UIEditor.keypressed(key)
+
     if gDevMode then
         if key == 'c' then
             gClickCount = gClickCount + 100000
@@ -103,6 +118,7 @@ function love.mousepressed(x, y, button)
     local vy = (y - gTransY) / gScale
 
     if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        UIEditor.mousepressed(vx, vy, button)
         gStateMachine:mousepressed(vx, vy, button)
     end
 
@@ -110,6 +126,26 @@ function love.mousepressed(x, y, button)
         if not gGameLost then
             gClickCount = gClickCount + gClickPower
         end
+    end
+end
+
+function love.mousereleased(x, y, button)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        UIEditor.mousereleased(vx, vy, button)
+    end
+end
+
+function love.mousemoved(x, y, dx, dy)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+    local vdx = dx / gScale
+    local vdy = dy / gScale
+
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        UIEditor.mousemoved(vx, vy, vdx, vdy)
     end
 end
 

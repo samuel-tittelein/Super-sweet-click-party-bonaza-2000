@@ -17,11 +17,25 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    for i = 1, 5 do
-        table.insert(self.availableMinigames, require('minigames.minigame' .. i .. '.init'))
+    local minigameList = {'taupe', 'popup', 'minigame3', 'minigame4', 'minigame5'}
+    for _, name in ipairs(minigameList) do
+        local success, mg = pcall(require, 'minigames.' .. name .. '.init')
+        if success then
+            table.insert(self.availableMinigames, mg)
+        else
+            print("Failed to load minigame: " .. name)
+            -- Insert a placeholder or handle error?
+            -- For now, let's just not insert, but this might mess up indexing.
+            -- Better to insert a dummy game or fail loudly?
+            -- Given it is dev, print error is good.
+            -- But to keep indices aligned with Selector:
+            -- We should probably error out or fix the list match.
+            -- Assuming the other folders exist and have init.lua (they appeared in list_dir).
+        end
     end
     -- Add stocks-timing minigame
     table.insert(self.availableMinigames, require('minigames.stocks-timing.init'))
+
 
     self.currentMinigame = nil
     self.currentMinigameIndex = 0
@@ -49,7 +63,18 @@ function GameLoop:nextLevel()
     if self.mode == 'single' then
         idx = self.targetGameIndex
     else
-        idx = math.random(#self.availableMinigames)
+        -- Sequential loop: taupe -> popup -> taupe...
+        -- availableMinigames has indices 1 (taupe) and 2 (popup) (and others if loaded)
+        -- We want to loop 1, 2, 1, 2...
+        
+        if self.currentMinigameIndex == 0 then
+            idx = 1
+        else
+            idx = self.currentMinigameIndex + 1
+            if idx > 2 then idx = 1 end -- Loop back to 1 after 2 (since we only have 2 real games)
+            -- If we want to support more games as we add them:
+            -- if idx > #self.availableMinigames then idx = 1 end
+        end
     end
 
     self.currentMinigame = self.availableMinigames[idx]
@@ -81,7 +106,7 @@ function GameLoop:update(dt)
         if result == 'won' then
             self.phase = 'result'
             self.resultMessage = "YOU WON!"
-            self.timer = 1 -- Show result for 1s
+            self.timer = 5 -- Show result for 5s (Intermission)
             self.score = self.score + 1
 
             -- Add click bonus

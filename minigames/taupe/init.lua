@@ -27,6 +27,22 @@ function Minigame:enter(difficulty)
     self.goldImage = safeLoad("minigames/taupe/assets/taupe_doree-removebg-preview.png")
     self.helmetImage = safeLoad("minigames/taupe/assets/taupe_casque-removebg-preview.png")
     self.hitImage = safeLoad("minigames/taupe/assets/taupe_tapee-removebg-preview.png")
+    self.cursorImage = safeLoad("minigames/taupe/assets/marteau-removebg-preview.png")
+
+    -- Load Sounds
+    local function loadSound(path)
+        local status, src = pcall(love.audio.newSource, path, "static")
+        if status then 
+            src:setVolume(0.5) -- Reduce volume by half
+            return src 
+        else 
+            print("Failed to load sound: " .. path) 
+            return nil 
+        end
+    end
+    self.sndAppear = loadSound("minigames/taupe/assets/mole_hit.ogg")
+    self.sndCatHit = loadSound("minigames/taupe/assets/Cat_hit.wav") -- Changed to .wav as present on disk
+    self.sndHammer = loadSound("minigames/taupe/assets/coutDeMarteau.ogg")
 
 
     -- Level Progression Logic
@@ -49,7 +65,7 @@ function Minigame:enter(difficulty)
     
     -- CONFIGURATION TAILLE (A modifier si trop petit/grand)
     self.moleTargetSize = 250 
-    self.moleRadius = self.moleTargetSize / 2.2 -- Rayon de la hitbox (zone de clic)
+    self.moleRadius = self.moleTargetSize / 2.6 -- Rayon de la hitbox réduit (était 2.2)
 
     -- Calculate grid positions
     self.grid = {}
@@ -87,8 +103,28 @@ function Minigame:enter(difficulty)
 
     self.font20 = love.graphics.newFont(20)
     self.font30 = love.graphics.newFont(30)
-    self.uiFont = love.graphics.newFont(35) -- Adjusted UI font size
+    self.uiFont = love.graphics.newFont(25) -- Reduced font size (was 35)
+    
+    -- DEBUG: Show system cursor for alignment
+    love.mouse.setVisible(false) -- User calibrated, hiding cursor
+    
+    self.mx = 0
+    self.my = 0
+
+    -- CONFIGURATION CURSEUR
+    -- Ajustez ces valeurs pour décaler le marteau par rapport à la souris
+    -- ox, oy sont le "point d'ancrage" de l'image (le point de l'image qui sera sous la souris)
+    -- Si le marteau est trop à droite, augmentez cursorAnchorX. Trop à gauche, diminuez.
+    -- Si le marteau est trop bas, augmentez cursorAnchorY.
+    self.cursorAnchorX = 330 -- Valeur par défaut (sera écrasée par le centrage si à 0, modifiez pour tester)
+    self.cursorAnchorY = 140
 end
+
+function Minigame:mousemoved(x, y, dx, dy)
+    self.mx = x
+    self.my = y
+end
+
 
 function Minigame:spawnMole()
     -- Find idle holes
@@ -103,6 +139,9 @@ function Minigame:spawnMole()
         local hole = idleHoles[math.random(#idleHoles)]
         hole.state = 'up'
         hole.timer = self.upDuration
+
+        -- Play appear sound
+        if self.sndAppear then self.sndAppear:stop(); self.sndAppear:play() end
 
         -- Determine Type
         local rnd = math.random()
@@ -134,6 +173,9 @@ function Minigame:update(dt)
         if not self.lost then
             self.won = true
         end
+    else
+        -- Just to be safe, ensure mouse hidden
+        -- love.mouse.setVisible(false)
     end
 
     if self.timer <= 0 and not self.lost then
@@ -228,6 +270,7 @@ function Minigame:draw()
     end
 
     -- Draw holes and moles
+    love.graphics.setColor(1, 1, 1) -- Reset color to white so images aren't tinted
     for _, hole in ipairs(self.grid) do
         -- Hole (Darken dirt under mole)
         -- love.graphics.setColor(0, 0, 0, 0.5)
@@ -266,13 +309,7 @@ function Minigame:draw()
         end
 
         if hole.state == 'hit' then
-             love.graphics.setColor(1, 0, 0)
-             if hole.type == 'cat' then
-                love.graphics.print("WRONG!", hole.x - 25, hole.y - 10)
-             else
-                love.graphics.print("OUCH!", hole.x - 20, hole.y - 10)
-             end
-             love.graphics.setColor(1, 1, 1)
+             -- No text feedback, just the image change
         end
         
         -- DEBUG STATE (Remove later)
@@ -280,6 +317,37 @@ function Minigame:draw()
         -- love.graphics.print(hole.state, hole.x, hole.y)
         -- love.graphics.setColor(1, 1, 1)
     end
+    
+    -- Draw Cursor
+    if self.cursorImage then
+        -- Use coordinates from mousemoved
+        local mx, my = self.mx, self.my
+        
+        -- Use configured anchor point
+        local ox = self.cursorAnchorX
+        local oy = self.cursorAnchorY
+        
+        -- Fallback if not set (though strictly initialized above)
+        if ox == 0 and oy == 0 then
+             ox = self.cursorImage:getWidth() / 2
+             oy = self.cursorImage:getHeight() / 2
+        end
+
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(self.cursorImage, mx, my, 0, 0.4, 0.4, ox, oy)
+    end
+end
+
+function Minigame:leave()
+    love.mouse.setVisible(true)
+end
+
+function Minigame:pause()
+    love.mouse.setVisible(true)
+end
+
+function Minigame:resume()
+    love.mouse.setVisible(false)
 end
 
 function Minigame:keypressed(key)
@@ -291,23 +359,31 @@ function Minigame:mousepressed(x, y, button)
     if self.won or self.lost then return end
 
     if button == 1 then -- Left click
+        local hitSomething = false
+
         for _, hole in ipairs(self.grid) do
             if hole.state == 'up' then
                 -- Check distance (simple circular hitbox)
                 local dx = x - hole.x
                 local dy = y - hole.y
                 if dx * dx + dy * dy <= self.moleRadius * self.moleRadius then
+                    
+                    if self.sndHammer then self.sndHammer:stop(); self.sndHammer:play() end
+
+                    hitSomething = true
+
                     if hole.type == 'cat' then
                         self.missed = self.missed + 1
                         hole.state = 'hit'
                         hole.timer = 0.5
-                        return
+                        if self.sndCatHit then self.sndCatHit:stop(); self.sndCatHit:play() end
+                        break -- Stop checking other holes
                     end
 
                     if hole.type == 'helmet' and hole.hp > 1 then
                         hole.hp = hole.hp - 1
                         -- Small visual feedback without changing state to hit
-                        return 
+                        break 
                     end
 
                     -- Hit!
@@ -324,6 +400,12 @@ function Minigame:mousepressed(x, y, button)
                     break -- Only hit one at a time
                 end
             end
+        end
+
+        if not hitSomething then
+            -- Missed click (clicked on nothing)
+            self.missed = self.missed + 1
+            if self.sndHammer then self.sndHammer:stop(); self.sndHammer:play() end -- Also play sound on miss? Or maybe a "whoosh"? User didn't specify, but hammer sound usually plays on click.
         end
     end
 end

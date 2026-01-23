@@ -54,14 +54,17 @@ function GameLoop:nextLevel()
         return
     end
 
-    if self.mode == 'single' and self.minigameCount > 0 then
-        gStateMachine:change('selector')
-        return
-    end
+    -- if self.mode == 'single' and self.minigameCount > 0 then
+    --     gStateMachine:change('selector')
+    --     return
+    -- end
 
     local idx
     if self.mode == 'single' then
         idx = self.targetGameIndex
+        if self.minigameCount > 0 then
+             self.difficulty = math.floor(self.difficulty) + 1
+        end
     else
         -- Sequential loop: taupe -> popup -> taupe...
         -- availableMinigames has indices 1 (taupe) and 2 (popup) (and others if loaded)
@@ -71,9 +74,10 @@ function GameLoop:nextLevel()
             idx = 1
         else
             idx = self.currentMinigameIndex + 1
-            if idx > 2 then idx = 1 end -- Loop back to 1 after 2 (since we only have 2 real games)
-            -- If we want to support more games as we add them:
-            -- if idx > #self.availableMinigames then idx = 1 end
+            if idx > 2 then 
+                idx = 1 
+                self.difficulty = math.floor(self.difficulty) + 1
+            end 
         end
     end
 
@@ -113,7 +117,7 @@ function GameLoop:update(dt)
             local bonus = self.currentMinigame.clickBonus or 10
             gClickCount = gClickCount + bonus
 
-            self.difficulty = self.difficulty + 0.1 -- Example difficulty increase
+            -- self.difficulty = self.difficulty + 0.1 -- Removing old increment
         elseif result == 'lost' then
             gStateMachine:change('lost', { score = self.score })
         end

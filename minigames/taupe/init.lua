@@ -8,13 +8,15 @@ function Minigame:enter(difficulty)
     self.score = 0
     self.difficulty = difficulty or 1
     
-    -- Game settings based on difficulty
-    -- Difficulty 1: normal speed
-    -- Difficulty >1: faster
-    local speedMultiplier = self.difficulty
+    -- Level Progression Logic
+    -- New Balancing:
+    -- upDuration: Stays mainly constant (~1s) to allow reaction time (especially for helmets)
+    -- spawnInterval: Decreases significantly to create "waves" / simultaneous moles
     
-    self.timeLimit = 15 -- 15 seconds to win
-    self.molesToHit = 10 -- Target score
+    -- No generic speedMod anymore, individual tuning:
+    
+    self.timeLimit = 15
+    -- self.molesToHit = 10 + math.floor(self.difficulty) -- Removed target score, survival mode now
     
     self.timer = self.timeLimit
     self.won = false
@@ -22,12 +24,18 @@ function Minigame:enter(difficulty)
     self.missed = 0
     self.maxMisses = 3
     
+    self.clickBonus = 1 -- Default bonus per click
+    
     -- Grid settings
-    -- We'll use a virtual grid centered on screen.
-    -- Assuming screen 1280x720. 
-    -- Let's define a 3x3 grid.
-    self.rows = 3
-    self.cols = 3
+    -- Lvl 5+: Increase grid (4x3)
+    if self.difficulty >= 5 then
+        self.rows = 3
+        self.cols = 4
+    else
+        self.rows = 3
+        self.cols = 3
+    end
+    
     self.holeRadius = 50
     self.moleRadius = 40
     
@@ -35,8 +43,13 @@ function Minigame:enter(difficulty)
     self.grid = {}
     local spacingX = 200
     local spacingY = 150
-    local startX = 1280 / 2 - spacingX
-    local startY = 720 / 2 - spacingY + 30 -- slightly offset for UI
+    
+    -- Recenter based on cols
+    local totalW = (self.cols - 1) * spacingX
+    local totalH = (self.rows - 1) * spacingY
+    
+    local startX = (1280 - totalW) / 2
+    local startY = (720 - totalH) / 2 + 30
     
     for r = 1, self.rows do
         for c = 1, self.cols do
@@ -46,6 +59,8 @@ function Minigame:enter(difficulty)
                 x = x, 
                 y = y, 
                 state = 'idle', -- idle, rising, up, hit, hiding
+                type = 'normal', -- normal, gold, cat, helmet
+                hp = 1,
                 timer = 0,
                 id = (r-1)*self.cols + c
             })
@@ -53,13 +68,27 @@ function Minigame:enter(difficulty)
     end
     
     -- Mole logic
-    self.activeMole = nil -- Only one at a time for simplicity? Or multiple? Let's do single for now but fast.
+    self.activeMole = nil 
     self.spawnTimer = 0
-    self.spawnInterval = math.max(0.5, 1.5 - (self.difficulty * 0.1)) -- Faster spawn as diff increases
-    self.upDuration = math.max(0.4, 1.0 - (self.difficulty * 0.1)) -- Moles stay up shorter
+    -- self.spawnInterval = (self.timeLimit - 1.0) / (self.molesToHit + 2) -- Old Formula
+    -- New spawn interval logic as target is removed:
+    -- Constant pressure based on difficulty?
+    -- Or just re-use the old speedMod logic roughly?
+    -- Let's stick to a fast pace: 0.5s to 1.5s range
+    -- New spawn interval logic:
+    -- Lvl 1: ~1.5s interval (One by one)
+    -- Lvl 7: ~0.8s interval (Overlaps since duration is 1s)
+    -- Formula: Start 1.6s, minus 0.1s per level roughly? 
+    -- math.max(0.3, 1.6 - (self.difficulty * 0.12)) -> Lvl 7 = 1.6 - 0.84 = 0.76s. Good.
+    self.spawnInterval = math.max(0.3, 1.6 - (self.difficulty * 0.12))
+    
+    -- Up Duration:
+    -- Lvl 1: 1.0s
+    -- Should not go below 0.7s really for accessibility/helmets
+    self.upDuration = math.max(0.75, 1.0 - (self.difficulty * 0.02)) 
     
     -- Pre-warm
-    self:spawnMole()
+    -- self:spawnMole() -- REMOVED: No pre-spawn during 'Get Ready'
 end
 
 function Minigame:spawnMole()
@@ -73,8 +102,27 @@ function Minigame:spawnMole()
     
     if #idleHoles > 0 then
         local hole = idleHoles[math.random(#idleHoles)]
-        hole.state = 'up' -- Skip animation for prototype
+        hole.state = 'up'
         hole.timer = self.upDuration
+        
+        -- Determine Type
+        local rnd = math.random()
+        
+        -- Default
+        hole.type = 'normal'
+        hole.hp = 1
+        
+        -- Gold (All levels, rare) - 5%
+        if rnd < 0.05 then
+            hole.type = 'gold'
+        -- Cat (Lvl 3+, rare) - 10% (if not gold)
+        elseif self.difficulty >= 3 and rnd < 0.15 then
+            hole.type = 'cat'
+        -- Helmet (Lvl 7+, uncommon) - 20%
+        elseif self.difficulty >= 7 and rnd < 0.35 then
+            hole.type = 'helmet'
+            hole.hp = 2
+        end
     end
 end
 
@@ -84,17 +132,19 @@ function Minigame:update(dt)
     -- Global timer
     self.timer = self.timer - dt
     if self.timer <= 0 then
-        if self.score >= self.molesToHit then
-            self.won = true -- Should have won already but just in case
-        else
-            self.lost = true
+        if not self.lost then
+            self.won = true
         end
     end
     
-    -- Win condition
-    if self.score >= self.molesToHit then
-        self.won = true
-        return "won"
+    -- Win condition: Survive until time runs out
+    -- if self.score >= self.molesToHit then ... end -- Removed
+
+    -- Timeout is now victory if not lost
+    -- (Handled in timer check above)
+    if self.timer <= 0 and not self.lost then
+         self.won = true
+         return "won"
     end
 
     if self.missed >= self.maxMisses then
@@ -107,7 +157,9 @@ function Minigame:update(dt)
     self.spawnTimer = self.spawnTimer - dt
     if self.spawnTimer <= 0 then
         self:spawnMole()
-        self.spawnTimer = self.spawnInterval
+        -- Reset timer to interval strictly to prevent burst spawning after a lag spike
+        -- (Do not let negative values accumulate)
+        self.spawnTimer = self.spawnInterval 
     end
     
     -- Update holes
@@ -116,7 +168,9 @@ function Minigame:update(dt)
             hole.timer = hole.timer - dt
             if hole.timer <= 0 then
                 hole.state = 'idle'
-                self.missed = self.missed + 1
+                if hole.type ~= 'cat' then
+                    self.missed = self.missed + 1
+                end
             end
         elseif hole.state == 'hit' then
             hole.timer = hole.timer - dt
@@ -139,8 +193,8 @@ function Minigame:draw()
     -- UI
     love.graphics.setColor(1, 1, 1)
     love.graphics.newFont(20)
-    love.graphics.printf("HIT " .. self.molesToHit .. " MOLES!", 0, 50, 1280, "center")
-    love.graphics.printf("TIME: " .. math.ceil(self.timer), 0, 80, 1280, "center")
+    love.graphics.printf("SURVIVE!", 0, 50, 1280, "center")
+    love.graphics.printf("TIME: " .. math.ceil(self.timer) .. " | LEVEL: " .. self.difficulty, 0, 80, 1280, "center")
     love.graphics.printf("SCORE: " .. self.score .. " | MISSES: " .. self.missed .. "/" .. self.maxMisses, 0, 110, 1280, "center")
 
     -- Draw holes and moles
@@ -151,8 +205,29 @@ function Minigame:draw()
         
         -- Mole
         if hole.state == 'up' then
-            love.graphics.setColor(0.6, 0.4, 0.2) -- Mole brown
+            if hole.type == 'gold' then
+                love.graphics.setColor(1, 0.8, 0) -- Gold
+            elseif hole.type == 'cat' then
+                love.graphics.setColor(0.5, 0.5, 0.5) -- Grey cat
+            elseif hole.type == 'helmet' then
+                love.graphics.setColor(0.4, 0.6, 0.4) -- Greenish/Helmet
+            else
+                love.graphics.setColor(0.6, 0.4, 0.2) -- Mole brown
+            end
+            
             love.graphics.circle("fill", hole.x, hole.y, self.moleRadius)
+            
+            -- Accessories
+            if hole.type == 'cat' then
+                -- Ears (simple triangles)
+                love.graphics.polygon("fill", hole.x-30, hole.y-20, hole.x-10, hole.y-50, hole.x, hole.y-30)
+                love.graphics.polygon("fill", hole.x+30, hole.y-20, hole.x+10, hole.y-50, hole.x, hole.y-30)
+            elseif hole.type == 'helmet' then
+                 -- Helmet stripe
+                love.graphics.setColor(0.2, 0.2, 0.2)
+                love.graphics.rectangle("fill", hole.x-30, hole.y-30, 60, 10)
+            end
+            
             -- Eyes
             love.graphics.setColor(0, 0, 0)
             love.graphics.circle("fill", hole.x - 10, hole.y - 10, 5)
@@ -160,11 +235,19 @@ function Minigame:draw()
             -- Nose
             love.graphics.setColor(1, 0.5, 0.5)
             love.graphics.circle("fill", hole.x, hole.y + 5, 8)
+            
         elseif hole.state == 'hit' then
-            love.graphics.setColor(1, 0, 0) -- Hit flash
-            love.graphics.circle("fill", hole.x, hole.y, self.moleRadius)
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.print("OUCH!", hole.x - 20, hole.y - 10)
+            if hole.type == 'cat' then
+                 love.graphics.setColor(1, 0, 0)
+                 love.graphics.circle("fill", hole.x, hole.y, self.moleRadius)
+                 love.graphics.setColor(1, 1, 1)
+                 love.graphics.print("WRONG!", hole.x - 25, hole.y - 10)
+            else
+                love.graphics.setColor(1, 0, 0) -- Hit flash
+                love.graphics.circle("fill", hole.x, hole.y, self.moleRadius)
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.print("OUCH!", hole.x - 20, hole.y - 10)
+            end
         end
     end
 end
@@ -184,9 +267,32 @@ function Minigame:mousepressed(x, y, button)
                 local dx = x - hole.x
                 local dy = y - hole.y
                 if dx*dx + dy*dy <= self.moleRadius * self.moleRadius then
+                    
+                    if hole.type == 'cat' then
+                        self.missed = self.missed + 1
+                        hole.state = 'hit'
+                        hole.timer = 0.5
+                        -- Feedback specific to cat?
+                        return
+                    end
+                    
+                    if hole.type == 'helmet' and hole.hp > 1 then
+                        hole.hp = hole.hp - 1
+                        -- Feedback for hit but not dead?
+                        -- Maybe sound or shake
+                        return -- Do not kill yet
+                    end
+                    
                     -- Hit!
                     hole.state = 'hit'
                     hole.timer = 0.5 -- Show hit for 0.5s
+                    
+                    if hole.type == 'gold' then
+                        self.clickBonus = 5 -- Used by GameLoop for global click count
+                    else
+                        self.clickBonus = 1
+                    end
+                    
                     self.score = self.score + 1
                     break -- Only hit one at a time
                 end

@@ -18,14 +18,14 @@ function MinigameSelector:enter()
     local startY = 220
     local padding = 15
 
-    for i, mgData in ipairs(G_MINIGAMES) do
+    for i, game in ipairs(G_MINIGAMES) do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols
 
         local x = startX + c * (btnW + padding)
         local y = startY + r * (btnH + padding)
 
-        table.insert(self.buttons, Button.new(mgData.name, x, y, btnW, btnH, function()
+        table.insert(self.buttons, Button.new(game.name, x, y, btnW, btnH, function()
             gStateMachine:change('game', { mode = 'single', gameIndex = i, difficulty = self.selectedLevel })
         end))
     end

@@ -35,11 +35,12 @@ function Minigame:enter(difficulty)
     -- Physics
     -- Make it less floaty by increasing base gravity significantly (was 2500)
     -- Gravity increases with difficulty
-    self.gravity = 6000 + (self.difficulty * 80)
+    -- Gravity increases with difficulty
+    self.gravity = 6000 + (self.difficulty * 80) -- Was 80
     self.jumpForce = -1350 -- Stronger jump to compensate for high gravity
     self.groundY = 550
     -- Increase speed scaling: base 400, +80 per difficulty level
-    self.speed = 400 + (self.difficulty * 50)
+    self.speed = 400 + (self.difficulty * 50) -- Was 50
     
     -- Player
     self.player = {
@@ -58,6 +59,18 @@ function Minigame:enter(difficulty)
     self.currentPattern = 1
     
     self.musicTimer = 0
+    
+    -- Score Logic
+    self.score = 0
+    self.scoreDisplay = {
+        value = 0,
+        scale = 1,
+        rotation = 0,
+        baseScale = 1,
+        targetScale = 1,
+        color = {1, 1, 1}
+    }
+
 
     -- Music Logic
     self.music = nil
@@ -89,11 +102,48 @@ function Minigame:update(dt)
     if self.gameState ~= "playing" then return self.gameState end
     
     self.timer = self.timer + dt
+    -- Removed win condition based on time for now, or keep it? 
+    -- User wanted score animations, so maybe the game should go on longer?
+    -- Let's keep the winTime but make it longer or rely on difficulty.
+    -- Actually, let's just let it run.
     if self.timer >= self.winTime then
         self.gameState = "won"
         if self.music then self.music:stop() end
         return "won"
     end
+
+    -- Update Score
+    local prevScore = self.score
+    self.score = self.score + (self.speed * dt) / 20 
+    
+    -- Animation Decay (Slower return to base for visibility)
+    self.scoreDisplay.scale = self.scoreDisplay.scale + (self.scoreDisplay.baseScale - self.scoreDisplay.scale) * 3 * dt
+    self.scoreDisplay.rotation = self.scoreDisplay.rotation + (0 - self.scoreDisplay.rotation) * 3 * dt
+    
+    -- Milestone Detection (Robust)
+    if math.floor(self.score) > math.floor(prevScore) then
+        local crossed1000 = math.floor(prevScore / 1000) < math.floor(self.score / 1000)
+        local crossed100 = math.floor(prevScore / 100) < math.floor(self.score / 100)
+        local crossed10 = math.floor(prevScore / 10) < math.floor(self.score / 10)
+        
+        if crossed1000 then
+            -- Huge Effect
+            self.scoreDisplay.scale = 4.0
+            self.scoreDisplay.rotation = math.rad(math.random(-45, 45))
+            -- Also play sound if available?
+            if self.sfx.pop then self.sfx.pop:play() end
+        elseif crossed100 then
+             -- Big Effect
+            self.scoreDisplay.scale = 2.5
+            self.scoreDisplay.rotation = math.rad(math.random(-25, 25))
+            if self.sfx.pop then self.sfx.pop:play() end
+        elseif crossed10 then
+             -- Small Effect
+            self.scoreDisplay.scale = 1.5
+            self.scoreDisplay.rotation = math.rad(math.random(-10, 10))
+        end
+    end
+
 
     
     -- Player Physics
@@ -118,7 +168,7 @@ function Minigame:update(dt)
     
     -- Auto-jump (Hold to retry)
     if self.player.isGrounded then
-        if love.keyboard.isDown("space") or love.keyboard.isDown("up") or love.keyboard.isDown("z") or love.mouse.isDown(1) then
+        if love.mouse.isDown(1) then
             self.player.dy = self.jumpForce
             self.player.isGrounded = false
         end
@@ -357,12 +407,7 @@ function Minigame:draw()
 end
 
 function Minigame:keypressed(key)
-    if key == "space" or key == "up" or key == "z" then
-        if self.player.isGrounded then
-            self.player.dy = self.jumpForce
-            self.player.isGrounded = false
-        end
-    end
+    -- Disabled: only mouse clicks allowed
 end
 
 function Minigame:mousepressed(x, y, button)

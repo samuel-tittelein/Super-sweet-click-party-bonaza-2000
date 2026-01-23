@@ -17,6 +17,7 @@ function MinigameSelector:enter()
     local startY = 200
     local padding = 20
 
+    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5'}
     for i = 1, 5 do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols
@@ -24,7 +25,8 @@ function MinigameSelector:enter()
         local x = startX + c * (btnW + padding)
         local y = startY + r * (btnH + padding)
 
-        table.insert(self.buttons, Button.new("Game " .. i, x, y, btnW, btnH, function()
+        local name = gameNames[i] or ("Game " .. i)
+        table.insert(self.buttons, Button.new(name, x, y, btnW, btnH, function()
             -- For specific testing, maybe launch just that game repeatedly?
             -- Or launch GameLoop forcing that game?
             -- User said "return to the mini game selection after the mini game is done"

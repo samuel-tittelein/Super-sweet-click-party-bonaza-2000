@@ -28,7 +28,8 @@ G_MINIGAMES = {
     { id = 'runnerDash',      name = 'Runner Dash' },
     { id = 'find-different',  name = 'Find Different' },
     { id = 'cute_and_creepy', name = 'Cute and Creepy' },
-    { id = 'letterbox',       name = 'Letterbox' }
+    { id = 'letterbox',       name = 'Letterbox' },
+    { id = 'never_give_up',   name = 'Never Give Up' }
 }
 
 -- Base resolution

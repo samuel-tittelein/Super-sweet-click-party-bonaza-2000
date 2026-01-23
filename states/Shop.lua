@@ -19,11 +19,46 @@ function Shop:enter(params)
             -- Try requiring 'init' or 'data' or just folder name
             -- Standard lua require for folder 'items.name' loads 'items/name/init.lua'
             local itemPath = itemsDir .. "." .. file
-            local success, itemModule = pcall(require, itemPath)
+            local success, itemModule = pcall(require, itemPath .. ".data")
+            if not success then
+                success, itemModule = pcall(require, itemPath .. ".init")
+            end
+            if not success then
+                success, itemModule = pcall(require, itemPath)
+            end
+
             if success then
-                -- If it's consumable, always add. If not, check if bought.
-                if itemModule.type == 'consumable' or not itemModule.bought then
-                    table.insert(availableItems, itemModule)
+                -- Filtering Logic for Item Unlocks
+                local themedItems = {
+                    ["jeux_de_lettres"] = true,
+                    ["informatique_et_etoile"] = true,
+                    ["balade_dans_les_bois"] = true,
+                    ["cute_and_creepy"] = true,
+                    ["chasse_aux_tresors"] = true,
+                    ["merveilles_des_profondeurs"] = true,
+                    ["maitre_du_temps"] = true,
+                    ["legende_etheree"] = true,
+                    ["melodie_a_l_infini"] = true,
+                    ["fete_des_clics"] = true
+                }
+
+                local isLocked = false
+                if themedItems[file] then
+                    isLocked = true -- All themed items locked by default
+
+                    -- Specific Unlock Conditions
+                    if file == "maitre_du_temps" and gUnlockedMinigames["time_matcher"] then
+                        isLocked = false
+                    elseif file == "melodie_a_l_infini" and gUnlockedMinigames["taiko"] then
+                        isLocked = false
+                    end
+                end
+
+                if not isLocked then
+                    -- If it's consumable, always add. If not, check if bought.
+                    if itemModule.type == 'consumable' or not itemModule.bought then
+                        table.insert(availableItems, itemModule)
+                    end
                 end
             end
         end

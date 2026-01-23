@@ -40,7 +40,7 @@ function Minigame:enter(difficulty)
         self.cursorImg = love.graphics.newImage("minigames/burger/assets/gant-removebg-preview.png")
         
         self.soundHappy = love.audio.newSource("minigames/burger/assets/Happy.ogg", "static")
-        self.soundHappy = love.audio.newSource("minigames/burger/assets/Happy.ogg", "static")
+
         self.soundUnhappy = love.audio.newSource("minigames/burger/assets/Unhappy.ogg", "static")
         self.bgMusic = love.audio.newSource("minigames/burger/assets/fond_sonore.ogg", "stream")
         

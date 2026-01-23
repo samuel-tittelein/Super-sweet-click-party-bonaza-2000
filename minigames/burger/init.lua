@@ -105,7 +105,7 @@ function Minigame:enter(difficulty)
     table.insert(self.targetStack, INGREDIENTS.BUN_TOP)
     
     -- Adjust time based on number of ingredients to be fair
-    self.maxTime = 3 + (numIngredients * 0.8)
+    self.maxTime = 3 + (numIngredients * 0.7)
 
     -- Current Player Stack
     self.currentStack = {}

@@ -17,14 +17,13 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = { 'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko',
-        'time_matcher', 'catch-stick' }
+    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick'}
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
             table.insert(self.availableMinigames, mg)
         else
-            print("Failed to load minigame: " .. name)
+            error("Failed to load minigame: " .. name .. "\nError: " .. tostring(mg))
         end
     end
     -- Manual insertions removed in favor of list
@@ -92,6 +91,11 @@ function GameLoop:nextLevel()
         if self.minigameCount % numGames == 0 then
             self.difficulty = math.floor(self.difficulty) + 1
         end
+    end
+
+    -- Cleanup previous minigame
+    if self.currentMinigame and self.currentMinigame.leave then
+        self.currentMinigame:leave()
     end
 
     self.currentMinigame = self.availableMinigames[idx]
@@ -252,6 +256,26 @@ function GameLoop:draw()
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
         love.graphics.setColor(0, 1, 0)
         love.graphics.printf(self.resultMessage, 0, 300, 1280, "center")
+    end
+end
+
+function GameLoop:exit()
+    if self.currentMinigame and self.currentMinigame.leave then
+        self.currentMinigame:leave()
+    end
+end
+
+function GameLoop:onPause()
+    love.mouse.setVisible(true)
+    if self.currentMinigame and self.currentMinigame.pause then
+        self.currentMinigame:pause()
+    end
+    gStateMachine:push('pause')
+end
+
+function GameLoop:resume()
+    if self.currentMinigame and self.currentMinigame.resume then
+        self.currentMinigame:resume()
     end
 end
 

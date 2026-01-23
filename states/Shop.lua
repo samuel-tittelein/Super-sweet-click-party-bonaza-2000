@@ -51,6 +51,8 @@ function Shop:enter(params)
                         isLocked = false
                     elseif file == "melodie_a_l_infini" and gUnlockedMinigames["taiko"] then
                         isLocked = false
+                    elseif file == "jeux_de_lettres" and gUnlockedMinigames["letterbox"] then
+                        isLocked = false
                     end
                 end
 

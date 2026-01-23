@@ -10,15 +10,15 @@ function MinigameSelector:enter()
         gStateMachine:change('menu')
     end))
 
-    local rows = 2
+    local rows = 3
     local cols = 3
     local btnW, btnH = 200, 100
     local startX = 250
     local startY = 200
     local padding = 20
 
-    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5'}
-    for i = 1, 5 do
+    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5', 'Popup', 'Stocks'}
+    for i = 1, 7 do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols
 

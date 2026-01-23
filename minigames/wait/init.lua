@@ -11,8 +11,8 @@ function Minigame:enter(difficulty)
     self.timer = 0
     self.winTime = 5
     self.handW, self.handH = self.main:getWidth(), self.main:getHeight()
-    self.handX = (love.graphics.getWidth() - self.handW) / 2
-    self.handY = love.graphics.getHeight() - self.handH - 50
+    self.handX = (love.graphics.getWidth() - self.handW) / 2 + 100
+    self.handY = love.graphics.getHeight() - self.handH - 285
     self.won = false
     self.lost = false
 end
@@ -28,7 +28,10 @@ function Minigame:update(dt)
     end
     if self.state == "lost" then
         self.lost = true
+        self.lostTimer = (self.lostTimer or 0) + dt
+        if self.lostTimer >= 1 then -- délai d'1 seconde avant de retourner "lost"
         return "lost"
+    end
     end
     return nil
 end

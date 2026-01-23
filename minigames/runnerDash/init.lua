@@ -5,12 +5,26 @@ function Minigame:enter(difficulty)
     
     -- Design Constants (8-bit style)
     self.colors = {
-        bg = {0.1, 0.1, 0.2}, -- Dark purple-ish
-        floor = {0.2, 0.8, 0.4}, -- Retro green
+        bg = {0.9, 0.9, 0.9}, -- Dark purple-ish
+        floor = {1, 1, 1}, -- Retro green
         player = {0.9, 0.9, 0.2}, -- Yellow
         obstacle = {0.9, 0.2, 0.2}, -- Red
         white = {1, 1, 1}
     }
+
+    -- Load Images securely (fallback to shapes if missing)
+    self.images = {}
+    local function loadImage(path)
+        local status, img = pcall(love.graphics.newImage, path)
+        if status then return img else return nil end
+    end
+
+    self.images.player = loadImage('minigames/runnerDash/assets/cube.png')
+    self.images.spike = loadImage('minigames/runnerDash/assets/spike.png')
+    self.images.block = loadImage('minigames/runnerDash/assets/block.png')
+    self.images.ground = loadImage('minigames/runnerDash/assets/ground.png')
+    self.images.background = loadImage('minigames/runnerDash/assets/background.png')
+
     
     -- Game State
     self.gameState = "playing" -- "playing", "won", "lost"
@@ -30,9 +44,9 @@ function Minigame:enter(difficulty)
     -- Player
     self.player = {
         x = 200,
-        y = self.groundY,
-        w = 40,
-        h = 40,
+        y = self.groundY+50,
+        w = 60,
+        h = 60,
         dy = 0,
         isGrounded = true,
         rotation = 0
@@ -170,78 +184,134 @@ end
 
 function Minigame:draw()
     -- Background
-    love.graphics.setColor(self.colors.bg)
-    love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    love.graphics.setColor(1, 1, 1) -- Reset color for image
+    if self.images.background then
+         -- Draw background scaled to screen
+         local bgw = self.images.background:getWidth()
+         local bgh = self.images.background:getHeight()
+         love.graphics.draw(self.images.background, 0, 0, 0, 1280/bgw, 720/bgh)
+    else
+        love.graphics.setColor(self.colors.bg)
+        love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    end
     
     -- Floor
-    love.graphics.setColor(self.colors.floor)
-    love.graphics.rectangle("fill", 0, self.groundY, 1280, 720 - self.groundY)
-    love.graphics.setColor(0,0,0,0.5)
-    love.graphics.rectangle("line", 0, self.groundY, 1280, 720 - self.groundY) -- outline
+    if self.images.ground then
+        love.graphics.setColor(1, 1, 1)
+        local gw = self.images.ground:getWidth()
+        local gh = self.images.ground:getHeight()
+        -- Tile horizontally
+        for x = 0, 1280, gw do
+            -- Draw ground line/image
+            love.graphics.draw(self.images.ground, x, self.groundY)
+        end
+        -- Fill below with a color matching the ground? Or just black?
+        -- Let's use the floor color for the fill below
+        love.graphics.setColor(self.colors.floor)
+        love.graphics.rectangle("fill", 0, self.groundY + gh, 1280, 720 - self.groundY - gh)
+    else
+        love.graphics.setColor(self.colors.floor)
+        love.graphics.rectangle("fill", 0, self.groundY, 1280, 720 - self.groundY)
+        love.graphics.setColor(0,0,0,0.5)
+        love.graphics.rectangle("line", 0, self.groundY, 1280, 720 - self.groundY) -- outline
+    end
     
     -- Player
     love.graphics.push()
     love.graphics.translate(self.player.x + self.player.w/2, self.player.y + self.player.h/2)
     love.graphics.rotate(self.player.rotation)
-    love.graphics.setColor(self.colors.player)
-    love.graphics.rectangle("fill", -self.player.w/2, -self.player.h/2, self.player.w, self.player.h)
-    love.graphics.setColor(0,0,0)
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", -self.player.w/2, -self.player.h/2, self.player.w, self.player.h)
+    
+    if self.images.player then
+        love.graphics.setColor(1, 1, 1)
+        local iw = self.images.player:getWidth()
+        local ih = self.images.player:getHeight()
+        -- Scale to fit player hitbox
+        love.graphics.draw(self.images.player, -self.player.w/2, -self.player.h/2, 0, self.player.w/iw, self.player.h/ih)
+    else
+        love.graphics.setColor(self.colors.player)
+        love.graphics.rectangle("fill", -self.player.w/2, -self.player.h/2, self.player.w, self.player.h)
+        love.graphics.setColor(0,0,0)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", -self.player.w/2, -self.player.h/2, self.player.w, self.player.h)
+    end
     love.graphics.pop()
     
     -- Obstacles
     for _, obs in ipairs(self.obstacles) do
         love.graphics.setColor(self.colors.obstacle)
+        
         if obs.type == "spike" then
-            -- Draw triangle
-            love.graphics.polygon("fill", 
-                obs.x, obs.y + obs.h, 
-                obs.x + obs.w/2, obs.y, 
-                obs.x + obs.w, obs.y + obs.h
-            )
-            love.graphics.setColor(0,0,0)
-            love.graphics.polygon("line", 
-                obs.x, obs.y + obs.h, 
-                obs.x + obs.w/2, obs.y, 
-                obs.x + obs.w, obs.y + obs.h
-            )
+            if self.images.spike then
+                love.graphics.setColor(1, 1, 1)
+                local iw = self.images.spike:getWidth()
+                local ih = self.images.spike:getHeight()
+                love.graphics.draw(self.images.spike, obs.x, obs.y, 0, obs.w/iw, obs.h/ih)
+            else
+                -- Draw triangle
+                love.graphics.polygon("fill", 
+                    obs.x, obs.y + obs.h, 
+                    obs.x + obs.w/2, obs.y, 
+                    obs.x + obs.w, obs.y + obs.h
+                )
+                love.graphics.setColor(0,0,0)
+                love.graphics.polygon("line", 
+                    obs.x, obs.y + obs.h, 
+                    obs.x + obs.w/2, obs.y, 
+                    obs.x + obs.w, obs.y + obs.h
+                )
+            end
         elseif obs.type == "double_spike" then
-             -- Draw 2 triangles side by side
-             -- Width is 80 total, so two 40-width spikes
-             local w1 = obs.w / 2
-             -- Spike 1
-             love.graphics.setColor(self.colors.obstacle)
-             love.graphics.polygon("fill", 
-                obs.x, obs.y + obs.h, 
-                obs.x + w1/2, obs.y, 
-                obs.x + w1, obs.y + obs.h
-             )
-             love.graphics.setColor(0,0,0)
-             love.graphics.polygon("line", 
-               obs.x, obs.y + obs.h, 
-               obs.x + w1/2, obs.y, 
-               obs.x + w1, obs.y + obs.h
-             )
+             if self.images.spike then
+                 love.graphics.setColor(1, 1, 1)
+                 local iw = self.images.spike:getWidth()
+                 local ih = self.images.spike:getHeight()
+                 local w1 = obs.w / 2
+                 love.graphics.draw(self.images.spike, obs.x, obs.y, 0, w1/iw, obs.h/ih)
+                 love.graphics.draw(self.images.spike, obs.x + w1, obs.y, 0, w1/iw, obs.h/ih)
+             else
+                 -- Draw 2 triangles side by side
+                 local w1 = obs.w / 2
+                 -- Spike 1
+                 love.graphics.setColor(self.colors.obstacle)
+                 love.graphics.polygon("fill", 
+                    obs.x, obs.y + obs.h, 
+                    obs.x + w1/2, obs.y, 
+                    obs.x + w1, obs.y + obs.h
+                 )
+                 love.graphics.setColor(0,0,0)
+                 love.graphics.polygon("line", 
+                   obs.x, obs.y + obs.h, 
+                   obs.x + w1/2, obs.y, 
+                   obs.x + w1, obs.y + obs.h
+                 )
+                 
+                 -- Spike 2
+                 love.graphics.setColor(self.colors.obstacle)
+                 love.graphics.polygon("fill", 
+                    obs.x + w1, obs.y + obs.h, 
+                    obs.x + w1 + w1/2, obs.y, 
+                    obs.x + obs.w, obs.y + obs.h
+                 )
+                 love.graphics.setColor(0,0,0)
+                 love.graphics.polygon("line", 
+                    obs.x + w1, obs.y + obs.h, 
+                    obs.x + w1 + w1/2, obs.y, 
+                    obs.x + obs.w, obs.y + obs.h
+                 )
+             end
              
-             -- Spike 2
-             love.graphics.setColor(self.colors.obstacle)
-             love.graphics.polygon("fill", 
-                obs.x + w1, obs.y + obs.h, 
-                obs.x + w1 + w1/2, obs.y, 
-                obs.x + obs.w, obs.y + obs.h
-             )
-             love.graphics.setColor(0,0,0)
-             love.graphics.polygon("line", 
-                obs.x + w1, obs.y + obs.h, 
-                obs.x + w1 + w1/2, obs.y, 
-                obs.x + obs.w, obs.y + obs.h
-             )
-             
-        else
-            love.graphics.rectangle("fill", obs.x, obs.y, obs.w, obs.h)
-            love.graphics.setColor(0,0,0)
-            love.graphics.rectangle("line", obs.x, obs.y, obs.w, obs.h)
+        else -- block
+            if self.images.block then
+                love.graphics.setColor(1, 1, 1)
+                local iw = self.images.block:getWidth()
+                local ih = self.images.block:getHeight()
+                love.graphics.draw(self.images.block, obs.x, obs.y, 0, obs.w/iw, obs.h/ih)
+            else
+                love.graphics.setColor(self.colors.obstacle) -- Red blocks? or maybe grey for blocks usually
+                love.graphics.rectangle("fill", obs.x, obs.y, obs.w, obs.h)
+                love.graphics.setColor(0,0,0)
+                love.graphics.rectangle("line", obs.x, obs.y, obs.w, obs.h)
+            end
         end
     end
     

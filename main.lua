@@ -11,6 +11,7 @@ gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
 gDevMode = true
 gLives = 3
+gUnlockedMinigames = {} -- Track beats for item unlocks
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280
@@ -22,6 +23,8 @@ gTransX = 0
 gTransY = 0
 
 function love.load()
+    love.audio.setVolume(1.0)
+    print("AUDIO: Volume set to 1.0")
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
     -- Load states
@@ -138,6 +141,7 @@ function gResetGame()
     gClickPower = 1
     gGameLost = false
     gLives = 3
+    gUnlockedMinigames = {} -- Clear unlocks on reset
 
     -- Reset Items by clearing them from package.loaded
     -- This forces them to be re-required and thus re-initialized (bought = false)

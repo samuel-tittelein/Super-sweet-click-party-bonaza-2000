@@ -1,6 +1,8 @@
 -- minigames/taiko/init.lua
 -- Minijeu de rythme façon Taiko no Tatsujin, style pixel art
-local Minigame = {}
+local Minigame = {
+    name = 'taiko'
+}
 
 function Minigame:enter(difficulty)
     self.snd_tambour = love.audio.newSource("minigames/taiko/assets/sounds/tambour-cropped.ogg", "static")
@@ -23,7 +25,7 @@ function Minigame:enter(difficulty)
     self.clickBonus = 40
     self.missCount = 0 -- Compteur de notes ratées
     -- Génération des notes (gauche/droite/double, réparties sur 10s, avec un peu de hasard)
-    local t = 0.7 -- délai avant la première note
+    local t = 0.7      -- délai avant la première note
     local interval = (self.timeLimit - 1.4) / (self.noteCount - 1)
     for i = 1, self.noteCount do
         local randomOffset = (math.random() - 0.5) * 0.3
@@ -45,6 +47,10 @@ function Minigame:enter(difficulty)
         })
         t = t + interval
     end
+
+    -- Font optimization
+    self.font32 = love.graphics.newFont(32)
+    self.font24 = love.graphics.newFont(24)
 end
 
 function Minigame:update(dt)
@@ -64,8 +70,6 @@ function Minigame:update(dt)
                     return "lost"
                 end
             end
-
-
         end
     end
     -- Gestion du flash
@@ -115,8 +119,8 @@ function Minigame:draw()
         if not note.hit and not note.missed and self.timer >= note.time then
             if note.type == 'double' then
                 -- Double note : deux cercles côte à côte
-                local colorL = {0.9, 0.2, 0.2}
-                local colorR = {0.2, 0.4, 0.9}
+                local colorL = { 0.9, 0.2, 0.2 }
+                local colorR = { 0.2, 0.4, 0.9 }
                 for i = 0, 2 do
                     love.graphics.setColor(colorL)
                     love.graphics.circle("line", 620, note.y, self.noteRadius - i)
@@ -141,7 +145,7 @@ function Minigame:draw()
                 love.graphics.setLineWidth(3)
             else
                 local x = (note.type == 'left') and 620 or 660
-                local color = (note.type == 'left') and {0.9, 0.2, 0.2} or {0.2, 0.4, 0.9}
+                local color = (note.type == 'left') and { 0.9, 0.2, 0.2 } or { 0.2, 0.4, 0.9 }
                 for i = 0, 2 do
                     love.graphics.setColor(color)
                     love.graphics.circle("line", x, note.y, self.noteRadius - i)
@@ -184,18 +188,18 @@ function Minigame:draw()
     love.graphics.rectangle("line", xCenter + 40, ySquares, squareSize, squareSize)
     -- Score
     love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(self.font32)
     love.graphics.printf("TAIKO RHYTHM", 0, 40, 1280, "center")
-    love.graphics.setFont(love.graphics.newFont(24))
+    love.graphics.setFont(self.font24)
     love.graphics.printf("Score: " .. tostring(self.score), 0, 80, 1280, "center")
     love.graphics.printf("Frappez les notes avec clic gauche/droit dans la zone bleue!", 0, 120, 1280, "center")
-    love.graphics.printf(string.format("Temps restant: %.1fs", math.max(0, self.timeLimit - self.timer)), 0, 160, 1280, "center")
+    love.graphics.printf(string.format("Temps restant: %.1fs", math.max(0, self.timeLimit - self.timer)), 0, 160, 1280,
+        "center")
     -- Indicateur de difficulté
     love.graphics.setColor(0.7, 0.7, 0.9)
     love.graphics.printf(string.format("Difficulté: %.1f", self.difficulty), 0, 680, 1280, "center")
     -- Affichage du compteur de notes ratées
     love.graphics.setColor(1, 0.3, 0.3)
-    love.graphics.setFont(love.graphics.newFont(24))
     love.graphics.printf("Misses: " .. tostring(self.missCount) .. " / 3", 0, 200, 1280, "center")
 end
 
@@ -225,11 +229,11 @@ function Minigame:mousepressed(x, y, button)
                     -- Note double : il faut les deux clics
                     if button == 1 and not note.leftHit then
                         note.leftHit = true
-                        self.flashColor = {0.9, 0.4, 0.4}
+                        self.flashColor = { 0.9, 0.4, 0.4 }
                         self.flashTimer = 0.15
                     elseif button == 2 and not note.rightHit then
                         note.rightHit = true
-                        self.flashColor = {0.4, 0.6, 1}
+                        self.flashColor = { 0.4, 0.6, 1 }
                         self.flashTimer = 0.15
                     end
                     if note.leftHit and note.rightHit then
@@ -240,7 +244,7 @@ function Minigame:mousepressed(x, y, button)
                     if (note.type == 'left' and button == 1) or (note.type == 'right' and button == 2) then
                         note.hit = true
                         self.score = self.score + 1
-                        self.flashColor = (note.type == 'left') and {0.9, 0.4, 0.4} or {0.4, 0.6, 1}
+                        self.flashColor = (note.type == 'left') and { 0.9, 0.4, 0.4 } or { 0.4, 0.6, 1 }
                         self.flashTimer = 0.15
                         break
                     end

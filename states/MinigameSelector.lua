@@ -18,8 +18,8 @@ function MinigameSelector:enter()
     local startY = 200
     local padding = 20
 
-    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5', 'Popup', 'Stocks'}
-    for i = 1, 7 do
+    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5', 'Popup', 'Stocks', 'Taiko'}
+    for i = 1, 8 do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols
 
@@ -28,6 +28,7 @@ function MinigameSelector:enter()
 
         local name = gameNames[i] or ("Game " .. i)
         table.insert(self.buttons, Button.new(name, x, y, btnW, btnH, function()
+            gStateMachine:change('game', { mode = 'single', gameIndex = i })
             -- For specific testing, maybe launch just that game repeatedly?
             -- Or launch GameLoop forcing that game?
             -- User said "return to the mini game selection after the mini game is done"
@@ -45,7 +46,7 @@ function MinigameSelector:draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.newFont(30)
     love.graphics.printf("SELECT A MINIGAME", 0, 100, 1280, "center")
-    
+
     love.graphics.printf("< Level " .. self.selectedLevel .. " >", 0, 150, 1280, "center")
     love.graphics.newFont(20)
     love.graphics.printf("(Use Left/Right arrows to change)", 0, 180, 1280, "center")

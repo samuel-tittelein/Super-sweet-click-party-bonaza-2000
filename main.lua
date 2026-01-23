@@ -14,10 +14,6 @@ gLives = 3
 gUnlockedMinigames = {} -- Track beats for item unlocks
 G_MINIGAMES = {
     { id = 'taupe',           name = 'Taupe' },
-    { id = 'minigame2',       name = 'Game 2' },
-    { id = 'minigame3',       name = 'Game 3' },
-    { id = 'minigame4',       name = 'Game 4' },
-    { id = 'minigame5',       name = 'Game 5' },
     { id = 'popup',           name = 'Popup' },
     { id = 'stocks-timing',   name = 'Stocks' },
     { id = 'taiko',           name = 'Taiko' },

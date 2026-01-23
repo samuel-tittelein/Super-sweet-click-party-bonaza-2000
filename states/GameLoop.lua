@@ -17,20 +17,13 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing'}
+    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko'}
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
             table.insert(self.availableMinigames, mg)
         else
             print("Failed to load minigame: " .. name)
-            -- Insert a placeholder or handle error?
-            -- For now, let's just not insert, but this might mess up indexing.
-            -- Better to insert a dummy game or fail loudly?
-            -- Given it is dev, print error is good.
-            -- But to keep indices aligned with Selector:
-            -- We should probably error out or fix the list match.
-            -- Assuming the other folders exist and have init.lua (they appeared in list_dir).
         end
     end
     -- Add stocks-timing minigame

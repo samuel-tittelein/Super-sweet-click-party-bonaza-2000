@@ -23,11 +23,9 @@ function GameLoop:enter(params)
         if success then
             table.insert(self.availableMinigames, mg)
         else
-            print("Failed to load minigame: " .. name)
+            error("Failed to load minigame: " .. name .. "\nError: " .. tostring(mg))
         end
     end
-    -- Add stocks-timing minigame
-    table.insert(self.availableMinigames, require('minigames.stocks-timing.init'))
 
 
     self.currentMinigame = nil

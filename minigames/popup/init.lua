@@ -37,6 +37,8 @@ function Minigame:enter(difficulty)
             id = i
         })
     end
+
+    self.bonzi = love.graphics.newImage("minigames/popup/assets/bonzi.jpg")
 end
 
 function Minigame:update(dt)
@@ -101,6 +103,14 @@ function Minigame:draw()
             love.graphics.rectangle("fill", p.x + p.w - btnSize - 2, p.y + 2, btnSize, btnSize)
             love.graphics.setColor(1, 1, 1)
             love.graphics.print("X", p.x + p.w - btnSize + 5, p.y + 2)
+
+            -- Affiche l'image bonzi.jpg centrée dans la popup
+            local imgW, imgH = self.bonzi:getWidth(), self.bonzi:getHeight()
+            local scale = math.min((p.w-20)/imgW, (p.h-50)/imgH, 1)
+            local imgX = p.x + (p.w - imgW*scale)/2
+            local imgY = p.y + 35 + (p.h-35 - imgH*scale)/2
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.draw(self.bonzi, imgX, imgY, 0, scale, scale)
         end
     end
 end

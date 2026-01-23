@@ -3,6 +3,9 @@
 local Minigame = {}
 
 function Minigame:enter(difficulty)
+    self.snd_tambour = love.audio.newSource("minigames/taiko/assets/sounds/tambour-cropped.ogg", "static")
+    self.snd_symbale = love.audio.newSource("minigames/taiko/assets/sounds/symbale-cropped.ogg", "static")
+    self.snd_symbaleopen = love.audio.newSource("minigames/taiko/assets/sounds/symbaleopen-cropped.ogg", "static")
     self.difficulty = difficulty or 1
     self.timer = 0
     self.timeLimit = 10
@@ -200,6 +203,21 @@ function Minigame:mousepressed(x, y, button)
     if self.won or self.lost then return end
     -- Vérifier si une note est dans la zone de frappe (tolérance augmentée)
     local tolerance = 20
+
+    if button == 1 and love.mouse.isDown(2) then
+        self.snd_symbaleopen:stop()
+        self.snd_symbaleopen:play()
+    elseif button == 2 and love.mouse.isDown(1) then
+        self.snd_symbaleopen:stop()
+        self.snd_symbaleopen:play()
+    elseif button == 1 then
+        self.snd_symbale:stop()
+        self.snd_symbale:play()
+    elseif button == 2 then
+        self.snd_tambour:stop()
+        self.snd_tambour:play()
+    end
+
     for _, note in ipairs(self.notes) do
         if not note.hit and not note.missed and self.timer >= note.time then
             if note.y >= self.zoneY1 - tolerance and note.y <= self.zoneY2 + tolerance then

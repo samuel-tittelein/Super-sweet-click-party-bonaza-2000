@@ -44,6 +44,21 @@ function TimeMatcher:enter(difficulty)
 
     -- Unified font for labels and numbers
     self.font26 = love.graphics.newFont(26)
+    self.font52 = love.graphics.newFont(52) -- Double size (26 * 2)
+    
+    -- Load Background
+    self.bgImage = love.graphics.newImage("minigames/time_matcher/assets/fond.jpg")
+
+    -- CONFIGURATION HORLOGES (Ajustez les positions ici)
+    -- Alignez ces points avec le CENTRE de vos horloges sur l'image de fond.
+    self.leftClockX = 436
+    self.leftClockY = 290
+    
+    self.rightClockX = 833
+    self.rightClockY = 290
+    
+    -- CONFIGURATION RAYON (Taille des aiguilles)
+    self.clockRadius = 120
 
     self:nextRound()
 end
@@ -154,22 +169,42 @@ end
 function TimeMatcher:draw()
     local cx, cy = 640, 360 -- Center of Minigame Area (1280x720)
 
-    -- Draw Background (Light yellowish)
-    love.graphics.setColor(1, 0.95, 0.8) -- Cream/Light Yellow
-    love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    -- Draw Background
+    if self.bgImage then
+        local sx = 1280 / self.bgImage:getWidth()
+        local sy = 720 / self.bgImage:getHeight()
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(self.bgImage, 0, 0, 0, sx, sy)
+    else
+        love.graphics.setColor(1, 0.95, 0.8) -- Cream/Light Yellow
+        love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    end
 
     -- Center positions for two clocks
-    local leftX, leftY = 400, 360
-    local rightX, rightY = 880, 360
-    local radius = 120
+    local leftX, leftY = self.leftClockX, self.leftClockY
+    local rightX, rightY = self.rightClockX, self.rightClockY
+    local radius = self.clockRadius
 
     -- Use unified font
-    love.graphics.setFont(self.font26)
+    love.graphics.setFont(self.font52)
 
-    -- Draw Timer
-    love.graphics.setColor(0, 0, 0) -- Black text for contrast
-    love.graphics.print(string.format("Time: %.1f", self.timer), 600, 100)
-    love.graphics.print(string.format("Round: %d/%d", self.round, self.totalRounds), 600, 130)
+    -- Draw Timer (Left Center, Numbers Only, Chalk Effect)
+    local timerText = string.format("%.1f", self.timer)
+    love.graphics.setColor(1, 1, 1, 0.3) -- Faint chalk dust
+    love.graphics.printf(timerText, 70 - 1, 280 - 1, 200, "left")
+    love.graphics.printf(timerText, 70 + 2, 280 + 1, 200, "left")
+    love.graphics.printf(timerText, 70 + 1, 280 - 2, 200, "left")
+    love.graphics.setColor(1, 1, 1, 1) -- Main chalk stroke
+    love.graphics.printf(timerText, 70, 280, 200, "left")
+    
+    -- Draw Rounds (Right Center, 1/3 format, Chalk Effect)
+    local roundsText = string.format("%d/%d", self.round, self.totalRounds)
+    love.graphics.setColor(1, 1, 1, 0.3) -- Faint chalk dust
+    love.graphics.printf(roundsText, 985 - 1, 280 - 1, 200, "right")
+    love.graphics.printf(roundsText, 985 + 2, 280 + 1, 200, "right")
+    love.graphics.printf(roundsText, 985 + 1, 280 - 2, 200, "right")
+    love.graphics.setColor(1, 1, 1, 1) -- Main chalk stroke
+    love.graphics.printf(roundsText, 985, 280, 200, "right")
 
     -- Draw Clocks
     self:drawClock(leftX, leftY, radius, self.currentH, self.currentM, self.currentS, "YOUR TIME")
@@ -177,50 +212,11 @@ function TimeMatcher:draw()
 end
 
 function TimeMatcher:drawClock(x, y, radius, h, m, s, label)
-    -- Clock Face (White Background)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.circle("fill", x, y, radius)
-
-    -- Clock Border (Black, Thick)
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.setLineWidth(5)
-    love.graphics.circle("line", x, y, radius)
-
     -- Center point
+    love.graphics.setColor(0, 0, 0)
     love.graphics.circle("fill", x, y, 6)
 
-    -- Label
-    love.graphics.printf(label, x - radius, y - radius - 45, radius * 2, "center")
-
-    -- Draw Numbers (12, 3, 6, 9 only)
-    for i = 1, 12 do
-        if i % 3 == 0 then
-            local angle = (i / 12) * 2 * math.pi - math.pi / 2
-            -- Position slightly inside ticks
-            local numRadius = radius - 35
-            local txtX = x + math.cos(angle) * numRadius
-            local txtY = y + math.sin(angle) * numRadius
-
-            -- Center text offset (using 60 width to prevent wrapping/clipping)
-            love.graphics.printf(tostring(i), txtX - 30, txtY - 20, 60, "center")
-        end
-    end
-
-    -- Draw Ticks
-    love.graphics.setLineWidth(2)
-    for i = 1, 60 do
-        local angle = (i / 60) * 2 * math.pi - math.pi / 2
-        local innerR = radius - 5
-        if i % 5 == 0 then innerR = radius - 10 end -- Longer tick for hours/5-mins
-
-        local x1 = x + math.cos(angle) * innerR
-        local y1 = y + math.sin(angle) * innerR
-        local x2 = x + math.cos(angle) * radius
-        local y2 = y + math.sin(angle) * radius
-        love.graphics.line(x1, y1, x2, y2)
-    end
-
-    -- Draw Hands
+    -- Hands
     -- Hour hand: independent as requested
     local hAngle = (h % 12) * (math.pi / 6) - math.pi / 2
 
@@ -246,8 +242,8 @@ end
 
 function TimeMatcher:mousepressed(x, y, button)
     if button == 1 then
-        local cx, cy = 400, 360
-        local radius = 120
+        local cx, cy = self.leftClockX, self.leftClockY -- User interacts with Left Clock (YOUR TIME)
+        local radius = self.clockRadius
 
         -- Calculate hand tip positions
         -- Hour
@@ -310,7 +306,7 @@ end
 function TimeMatcher:updateHand(x, y)
     if not self.dragging then return end
 
-    local cx, cy = 400, 360
+    local cx, cy = self.leftClockX, self.leftClockY
     local angle = math.atan2(y - cy, x - cx)
     -- Angle is -pi to pi. 0 is Right.
     -- Convert to clock value.

@@ -6,6 +6,7 @@ local StateMachine = require 'utils.StateMachine'
 local MainMenu = require 'states.MainMenu'
 gStateMachine = nil
 gClickCount = 0
+gClickPower = 1
 gGameLost = false
 
 -- Base resolution
@@ -96,7 +97,7 @@ function love.mousepressed(x, y, button)
 
     if button == 1 or button == 2 then
         if not gGameLost then
-            gClickCount = gClickCount + 1
+            gClickCount = gClickCount + gClickPower
         end
     end
 end

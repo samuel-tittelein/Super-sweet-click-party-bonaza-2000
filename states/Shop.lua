@@ -19,11 +19,46 @@ function Shop:enter(params)
             -- Try requiring 'init' or 'data' or just folder name
             -- Standard lua require for folder 'items.name' loads 'items/name/init.lua'
             local itemPath = itemsDir .. "." .. file
-            local success, itemModule = pcall(require, itemPath)
+            local success, itemModule = pcall(require, itemPath .. ".data")
+            if not success then
+                success, itemModule = pcall(require, itemPath .. ".init")
+            end
+            if not success then
+                success, itemModule = pcall(require, itemPath)
+            end
+
             if success then
-                 -- If it's consumable, always add. If not, check if bought.
-                if itemModule.type == 'consumable' or not itemModule.bought then
-                    table.insert(availableItems, itemModule)
+                -- Filtering Logic for Item Unlocks
+                local themedItems = {
+                    ["jeux_de_lettres"] = true,
+                    ["informatique_et_etoile"] = true,
+                    ["balade_dans_les_bois"] = true,
+                    ["cute_and_creepy"] = true,
+                    ["chasse_aux_tresors"] = true,
+                    ["merveilles_des_profondeurs"] = true,
+                    ["maitre_du_temps"] = true,
+                    ["legende_etheree"] = true,
+                    ["melodie_a_l_infini"] = true,
+                    ["fete_des_clics"] = true
+                }
+
+                local isLocked = false
+                if themedItems[file] then
+                    isLocked = true -- All themed items locked by default
+
+                    -- Specific Unlock Conditions
+                    if file == "maitre_du_temps" and gUnlockedMinigames["time_matcher"] then
+                        isLocked = false
+                    elseif file == "melodie_a_l_infini" and gUnlockedMinigames["taiko"] then
+                        isLocked = false
+                    end
+                end
+
+                if not isLocked then
+                    -- If it's consumable, always add. If not, check if bought.
+                    if itemModule.type == 'consumable' or not itemModule.bought then
+                        table.insert(availableItems, itemModule)
+                    end
                 end
             end
         end
@@ -55,12 +90,34 @@ end
 function Shop:buyItem(item, index)
     if gClickCount >= item.price then
         gClickCount = gClickCount - item.price
-        
+
         if item.type == 'consumable' then
             gInventory[item.key] = (gInventory[item.key] or 0) + 1
         else
             item.bought = true
             item:onBuy()
+        end
+
+        -- Check for Win Condition
+        local themedItems = {
+            "jeux_de_lettres", "informatique_et_etoile", "balade_dans_les_bois",
+            "cute_and_creepy", "chasse_aux_tresors", "merveilles_des_profondeurs",
+            "maitre_du_temps", "legende_etheree", "melodie_a_l_infini", "fete_des_clics"
+        }
+
+        local allBought = true
+        for _, theme in ipairs(themedItems) do
+            local path = "items." .. theme .. ".data"
+            local status, module = pcall(require, path)
+            if not status or not module.bought then
+                allBought = false
+                break
+            end
+        end
+
+        if allBought then
+            gStateMachine:change('won')
+            return
         end
 
         -- Remove from shop display
@@ -82,7 +139,7 @@ function Shop:buyItem(item, index)
         for i, shopItem in ipairs(self.shopItems) do
             local btnX = 200 + (i - 1) * 350
             local btnY = 400
-            
+
             -- If consumable, always show button. If not, show only if not bought.
             if shopItem.type == 'consumable' then
                 table.insert(self.buttons, Button.new("Buy", btnX, btnY, 100, 40, function()
@@ -107,7 +164,7 @@ function Shop:draw()
     love.graphics.printf("SHOP SCREEN", 0, 50, 1280, "center")
 
     love.graphics.newFont(20)
-    love.graphics.printf("Click Power: " .. gClickPower, 0, 120, 1280, "center")
+    love.graphics.printf("Click Power: " .. gClickPower .. " | Lives: " .. gLives, 0, 120, 1280, "center")
 
     -- Draw Items
     for i, item in ipairs(self.shopItems) do
@@ -135,7 +192,7 @@ function Shop:draw()
             love.graphics.printf("Price: " .. item.price, x, y + 160, 200, "center")
             if item.type == 'consumable' then
                 love.graphics.setColor(1, 1, 1)
-                love.graphics.printf("Stock: " .. (gInventory[item.key] or 0), x, y + 185, 200, "center") 
+                love.graphics.printf("Stock: " .. (gInventory[item.key] or 0), x, y + 185, 200, "center")
             end
         end
     end

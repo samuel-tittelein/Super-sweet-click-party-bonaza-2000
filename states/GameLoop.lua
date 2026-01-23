@@ -17,7 +17,7 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger'}
+    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick'}
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -26,6 +26,8 @@ function GameLoop:enter(params)
             error("Failed to load minigame: " .. name .. "\nError: " .. tostring(mg))
         end
     end
+    -- Manual insertions removed in favor of list
+
 
 
     self.currentMinigame = nil
@@ -37,7 +39,7 @@ function GameLoop:enter(params)
 
     -- Load item definitions for UI
     self.itemDefs = {}
-    local itemFiles = {'heart', 'downgrade'} 
+    local itemFiles = { 'heart', 'downgrade' }
     -- We assume they exist in items/name/init.lua now
     for _, name in ipairs(itemFiles) do
         local success, itemTitle = pcall(require, 'items.' .. name .. '.init')
@@ -57,34 +59,37 @@ function GameLoop:nextLevel()
     if shopInterval < 3 then shopInterval = 3 end -- Minimum logic if few games
 
     if self.mode ~= 'single' and self.gamesPlayedSinceShop >= shopInterval then
+        self:stopMinigame()
         gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
         return
     end
 
-    -- if self.mode == 'single' and self.minigameCount > 0 then
-    --     gStateMachine:change('selector')
-    --     return
-    -- end
+    if self.mode == 'single' and self.minigameCount > 0 then
+        self:stopMinigame()
+        gStateMachine:change('selector')
+        return
+    end
 
     local idx
     if self.mode == 'single' then
         idx = self.targetGameIndex
         if self.minigameCount > 0 then
-             self.difficulty = math.floor(self.difficulty) + 1
+            self.difficulty = math.floor(self.difficulty) + 1
         end
     else
-        -- Sequential loop: taupe -> popup -> taupe...
-        -- availableMinigames has indices 1 (taupe) and 2 (popup) (and others if loaded)
-        -- We want to loop 1, 2, 1, 2...
-        
-        if self.currentMinigameIndex == 0 then
-            idx = 1
+        -- Random selection from ALL available games
+        local numGames = #self.availableMinigames
+        if numGames > 0 then
+            repeat
+                idx = math.random(numGames)
+            until numGames <= 1 or idx ~= self.currentMinigameIndex
         else
-            idx = self.currentMinigameIndex + 1
-            if idx > #self.availableMinigames then 
-                idx = 1 
-                self.difficulty = math.floor(self.difficulty) + 1
-            end 
+            idx = 1
+        end
+
+        -- Increment difficulty every few games instead of every loop
+        if self.minigameCount % numGames == 0 then
+            self.difficulty = math.floor(self.difficulty) + 1
         end
     end
 
@@ -101,7 +106,7 @@ function GameLoop:nextLevel()
     self.gamesPlayedSinceShop = self.gamesPlayedSinceShop + 1
 
     self.phase = 'intro'
-    self.timer = 5 -- 5 seconds intro for item selection
+    self.timer = 1 -- 1 second intro for item selection
 
     -- Reset minigame
     if self.currentMinigame.enter then
@@ -120,6 +125,7 @@ function GameLoop:update(dt)
         local result = self.currentMinigame:update(dt)
 
         if result == 'won' then
+            self:stopMinigame()
             self.phase = 'result'
             self.resultMessage = "YOU WON!"
             self.timer = 5 -- Show result for 5s (Intermission)
@@ -129,15 +135,39 @@ function GameLoop:update(dt)
             local bonus = self.currentMinigame.clickBonus or 10
             gClickCount = gClickCount + bonus
 
+            -- Record win for unlocks
+            if self.currentMinigame.name then
+                gUnlockedMinigames[self.currentMinigame.name] = true
+            end
+
             -- self.difficulty = self.difficulty + 0.1 -- Removing old increment
         elseif result == 'lost' then
-            gStateMachine:change('lost', { score = self.score })
+            self:stopMinigame()
+            gLives = gLives - 1
+            if gLives <= 0 then
+                gStateMachine:change('lost', { score = self.score })
+            else
+                self.phase = 'result'
+                self.resultMessage = "LIFE LOST!"
+                self.timer = 2 -- Short delay before next game
+                -- No score increment, no click bonus
+            end
         end
     elseif self.phase == 'result' then
         self.timer = self.timer - dt
         if self.timer <= 0 then
             self:nextLevel()
         end
+    end
+end
+
+function GameLoop:exit()
+    self:stopMinigame()
+end
+
+function GameLoop:stopMinigame()
+    if self.currentMinigame and self.currentMinigame.exit then
+        self.currentMinigame:exit()
     end
 end
 
@@ -159,7 +189,7 @@ function GameLoop:draw()
         -- Draw UI Text
         love.graphics.setColor(1, 1, 1)
         love.graphics.newFont(30)
-        love.graphics.printf("GAME UI TEMPLATE - Score (Clicks): " .. gClickCount, 0, 20, 1280, "center")
+        love.graphics.printf("Score: " .. gClickCount .. " | Lives: " .. gLives, 0, 20, 1280, "center")
 
         -- Clip and Draw Game
         love.graphics.setScissor(gTransX + (gameX * gScale), gTransY + (gameY * gScale), gameW * gScale, gameH * gScale)
@@ -172,7 +202,9 @@ function GameLoop:draw()
         local mgScale = gameW / 1280
         love.graphics.scale(mgScale, mgScale)
 
+        love.graphics.push("all") -- Protect global state (fonts, line width, etc.)
         self.currentMinigame:draw()
+        love.graphics.pop()
 
         love.graphics.pop()
         love.graphics.setScissor()
@@ -191,12 +223,12 @@ function GameLoop:draw()
         love.graphics.printf("GET READY!", 0, 300, 1280, "center")
         love.graphics.printf("GET READY!", 0, 300, 1280, "center")
         love.graphics.printf(string.format("%.1f", self.timer), 0, 350, 1280, "center")
-        
+
         -- Draw UI Items
         love.graphics.setColor(1, 1, 1)
         love.graphics.newFont(20)
         love.graphics.print("BONUS ITEMS:", 1000, 150)
-        
+
         local startY = 200
         for name, def in pairs(self.itemDefs) do
             local count = gInventory[name] or 0
@@ -204,18 +236,18 @@ function GameLoop:draw()
                 -- Draw box logic (simple)
                 love.graphics.setColor(1, 1, 1, 0.5)
                 love.graphics.rectangle("fill", 1000, startY, 200, 60)
-                
+
                 love.graphics.setColor(1, 1, 1)
                 love.graphics.print(def.name .. " x" .. count, 1010, startY + 20)
-                
+
                 -- Draw logic from item definition?
                 if def.draw then
                     love.graphics.push()
                     -- icon size?
-                    def:draw(1150, startY + 10, 1) 
+                    def:draw(1150, startY + 10, 1)
                     love.graphics.pop()
                 end
-                
+
                 startY = startY + 70
             end
         end
@@ -249,7 +281,18 @@ end
 
 function GameLoop:keypressed(key)
     if key == 'escape' then
-        self:onPause()
+        gStateMachine:push('pause') -- Pause menu is on top
+    elseif gDevMode and key == 'space' then
+        -- Force Win
+        self.phase = 'result'
+        self.resultMessage = "DEV WIN"
+        self.timer = 0.5
+        self.score = self.score + 1
+        local bonus = (self.currentMinigame and self.currentMinigame.clickBonus) or 10
+        gClickCount = gClickCount + bonus
+    elseif gDevMode and key == 's' then
+        -- Go to Shop
+        gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
     else
         -- Item Inputs REMOVED (replaced by UI)
         -- 'd' for Downgrade logic removed
@@ -300,6 +343,35 @@ function GameLoop:mousepressed(x, y, button)
                 startY = startY + 70
             end
         end
+    end
+end
+
+function GameLoop:mousereleased(x, y, button)
+    if self.phase == 'play' and self.currentMinigame.mousereleased then
+        -- Coordinate transform
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local mgScale = gameW / 1280
+
+        local mx = (x - gameX) / mgScale
+        local my = (y - gameY) / mgScale
+        self.currentMinigame:mousereleased(mx, my, button)
+    end
+end
+
+function GameLoop:mousemoved(x, y, dx, dy)
+    if self.phase == 'play' and self.currentMinigame.mousemoved then
+        -- Coordinate transform
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local mgScale = gameW / 1280
+
+        local mx = (x - gameX) / mgScale
+        local my = (y - gameY) / mgScale
+        local mdx = dx / mgScale
+        local mdy = dy / mgScale
+
+        self.currentMinigame:mousemoved(mx, my, mdx, mdy)
     end
 end
 

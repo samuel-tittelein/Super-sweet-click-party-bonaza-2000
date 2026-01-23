@@ -9,6 +9,9 @@ gClickCount = 0
 gClickPower = 1
 gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
+gDevMode = true
+gLives = 3
+gUnlockedMinigames = {} -- Track beats for item unlocks
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280
@@ -29,7 +32,8 @@ function love.load()
         ['shop'] = require 'states.Shop',
         ['selector'] = require 'states.MinigameSelector',
         ['pause'] = require 'states.PauseMenu',
-        ['lost'] = require 'states.GameLost'
+        ['lost'] = require 'states.GameLost',
+        ['won'] = require 'states.GameWon'
     }
 
     gStateMachine = StateMachine.new(states)
@@ -84,6 +88,13 @@ function love.draw()
 end
 
 function love.keypressed(key)
+    if gDevMode then
+        if key == 'c' then
+            gClickCount = gClickCount + 100000
+        elseif key == 'f1' then
+            gDevMode = not gDevMode
+        end
+    end
     gStateMachine:keypressed(key)
 end
 
@@ -99,6 +110,46 @@ function love.mousepressed(x, y, button)
     if button == 1 or button == 2 then
         if not gGameLost then
             gClickCount = gClickCount + gClickPower
+        end
+    end
+end
+
+function love.mousereleased(x, y, button)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        gStateMachine:mousereleased(vx, vy, button)
+    end
+end
+
+function love.mousemoved(x, y, dx, dy)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+    -- dx/dy also need scaling? Yes.
+    local vdx = dx / gScale
+    local vdy = dy / gScale
+
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        gStateMachine:mousemoved(vx, vy, vdx, vdy)
+    end
+end
+
+function gResetGame()
+    gClickCount = 0
+    gClickPower = 1
+    gGameLost = false
+    gLives = 3
+    gUnlockedMinigames = {} -- Clear unlocks on reset
+
+    -- Reset Items by clearing them from package.loaded
+    -- This forces them to be re-required and thus re-initialized (bought = false)
+    local itemsDir = "items"
+    local files = love.filesystem.getDirectoryItems(itemsDir)
+    for _, file in ipairs(files) do
+        local info = love.filesystem.getInfo(itemsDir .. "/" .. file)
+        if info.type == "directory" then
+            local itemPath = itemsDir .. "." .. file .. ".data"
+            package.loaded[itemPath] = nil
         end
     end
 end

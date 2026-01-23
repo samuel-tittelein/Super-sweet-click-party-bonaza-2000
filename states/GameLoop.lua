@@ -17,7 +17,7 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait' }
+    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait', 'find-different' }
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -100,6 +100,17 @@ function GameLoop:nextLevel()
 
     self.currentMinigame = self.availableMinigames[idx]
     self.currentMinigameIndex = idx
+    
+    -- Safety check: if minigame is nil, use first minigame
+    if not self.currentMinigame then
+        if #self.availableMinigames > 0 then
+            self.currentMinigame = self.availableMinigames[1]
+            self.currentMinigameIndex = 1
+        else
+            gStateMachine:change('menu')
+            return
+        end
+    end
 
     -- Increase difficulty slightly or logic here
     self.minigameCount = self.minigameCount + 1

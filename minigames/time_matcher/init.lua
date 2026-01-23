@@ -1,4 +1,6 @@
-local TimeMatcher = {}
+local TimeMatcher = {
+    name = 'time_matcher'
+}
 
 function TimeMatcher:enter(difficulty)
     self.difficulty = difficulty or 1
@@ -28,6 +30,21 @@ function TimeMatcher:enter(difficulty)
 
     self.clickBonus = 10 + (difficulty * 5)
 
+    -- Robust sound cleanup: Stop any existing ticking before starting a new source
+    if self.snd_ticking then
+        self.snd_ticking:stop()
+    end
+
+    -- Load and start sounds
+    self.snd_ticking = love.audio.newSource("minigames/time_matcher/assets/clock_ticking.ogg", "static")
+    self.snd_dong = love.audio.newSource("minigames/time_matcher/assets/dong.ogg", "static")
+
+    self.snd_ticking:setLooping(true)
+    self.snd_ticking:play()
+
+    -- Unified font for labels and numbers
+    self.font26 = love.graphics.newFont(26)
+
     self:nextRound()
 end
 
@@ -55,8 +72,14 @@ function TimeMatcher:nextRound()
 end
 
 function TimeMatcher:update(dt)
-    if self.state == 'won' then return 'won' end
-    if self.state == 'lost' then return 'lost' end
+    if self.state == 'won' then
+        if self.snd_ticking then self.snd_ticking:stop() end
+        return 'won'
+    end
+    if self.state == 'lost' then
+        if self.snd_ticking then self.snd_ticking:stop() end
+        return 'lost'
+    end
 
     self.timer = self.timer - dt
     if self.timer <= 0 then
@@ -74,6 +97,11 @@ function TimeMatcher:update(dt)
 
     if hMatch and mMatch and sMatch then
         -- Round matched!
+        if self.snd_dong then
+            self.snd_dong:stop()
+            self.snd_dong:play()
+        end
+
         self.round = self.round + 1
         if self.round > self.totalRounds then
             self.state = 'won'
@@ -135,6 +163,9 @@ function TimeMatcher:draw()
     local rightX, rightY = 880, 360
     local radius = 120
 
+    -- Use unified font
+    love.graphics.setFont(self.font26)
+
     -- Draw Timer
     love.graphics.setColor(0, 0, 0) -- Black text for contrast
     love.graphics.print(string.format("Time: %.1f", self.timer), 600, 100)
@@ -159,19 +190,20 @@ function TimeMatcher:drawClock(x, y, radius, h, m, s, label)
     love.graphics.circle("fill", x, y, 6)
 
     -- Label
-    love.graphics.printf(label, x - radius, y - radius - 40, radius * 2, "center")
+    love.graphics.printf(label, x - radius, y - radius - 45, radius * 2, "center")
 
-    -- Draw Numbers
-    love.graphics.newFont(20)
+    -- Draw Numbers (12, 3, 6, 9 only)
     for i = 1, 12 do
-        local angle = (i / 12) * 2 * math.pi - math.pi / 2
-        -- Position slightly inside ticks
-        local numRadius = radius - 25
-        local txtX = x + math.cos(angle) * numRadius
-        local txtY = y + math.sin(angle) * numRadius
+        if i % 3 == 0 then
+            local angle = (i / 12) * 2 * math.pi - math.pi / 2
+            -- Position slightly inside ticks
+            local numRadius = radius - 35
+            local txtX = x + math.cos(angle) * numRadius
+            local txtY = y + math.sin(angle) * numRadius
 
-        -- Center text offset
-        love.graphics.printf(tostring(i), txtX - 10, txtY - 10, 20, "center")
+            -- Center text offset (using 60 width to prevent wrapping/clipping)
+            love.graphics.printf(tostring(i), txtX - 30, txtY - 20, 60, "center")
+        end
     end
 
     -- Draw Ticks
@@ -189,18 +221,18 @@ function TimeMatcher:drawClock(x, y, radius, h, m, s, label)
     end
 
     -- Draw Hands
-    -- Hour
+    -- Hour hand: independent as requested
     local hAngle = (h % 12) * (math.pi / 6) - math.pi / 2
 
     love.graphics.setLineWidth(6)
     love.graphics.setColor(0, 0, 0) -- Hour (Black)
-    love.graphics.line(x, y, x + math.cos(hAngle) * (radius * 0.5), y + math.sin(hAngle) * (radius * 0.5))
+    love.graphics.line(x, y, x + math.cos(hAngle) * (radius * 0.45), y + math.sin(hAngle) * (radius * 0.45))
 
     -- Minute
     local mAngle = m * (math.pi / 30) - math.pi / 2
     love.graphics.setLineWidth(4)
     love.graphics.setColor(0, 0, 0) -- Minute (Black)
-    love.graphics.line(x, y, x + math.cos(mAngle) * (radius * 0.8), y + math.sin(mAngle) * (radius * 0.8))
+    love.graphics.line(x, y, x + math.cos(mAngle) * (radius * 0.7), y + math.sin(mAngle) * (radius * 0.7))
 
     -- Second
     if self.useSeconds then
@@ -308,6 +340,12 @@ end
 function TimeMatcher:mousemoved(x, y, dx, dy)
     if self.dragging then
         self:updateHand(x, y)
+    end
+end
+
+function TimeMatcher:exit()
+    if self.snd_ticking then
+        self.snd_ticking:stop()
     end
 end
 

@@ -20,6 +20,8 @@ function GameLoop:enter(params)
     for i = 1, 5 do
         table.insert(self.availableMinigames, require('minigames.minigame' .. i .. '.init'))
     end
+    -- Add stocks-timing minigame
+    table.insert(self.availableMinigames, require('minigames.stocks-timing.init'))
 
     self.currentMinigame = nil
     self.currentMinigameIndex = 0

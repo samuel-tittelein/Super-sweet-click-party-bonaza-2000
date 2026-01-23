@@ -6,50 +6,95 @@ local SpaceInvader = {
 
 -- Game Constants
 local PLAYER_WIDTH = 40
-local PLAYER_HEIGHT = 30
+local PLAYER_HEIGHT = 40
 local BULLET_SPEED = 600
-local BULLET_WIDTH = 4
-local BULLET_HEIGHT = 10
-local ENEMY_WIDTH = 30
-local ENEMY_HEIGHT = 30
+local BULLET_WIDTH = 10
+local BULLET_HEIGHT = 20
+local ENEMY_WIDTH = 40
+local ENEMY_HEIGHT = 40
 local ENEMY_PADDING = 15
 local ENEMY_SPEED_BASE = 50
-local ENEMY_DROP_DISTANCE = 20
+-- Reduce drop distance to give player more time as sprites might be larger visually
+local ENEMY_DROP_DISTANCE = 15
 
 function SpaceInvader:enter(difficulty)
     self.difficulty = difficulty or 1
     
+    -- Load Assets
+    local assetPath = "minigames/space_invader/assets/"
+    
+    -- Protective loading for images
+    local function loadImage(path)
+        if love.filesystem.getInfo(path) then
+             return love.graphics.newImage(path)
+        end
+        return nil
+    end
+
+    self.imgPlayer = loadImage(assetPath .. "spaceship.png")
+    self.imgEnemy = loadImage(assetPath .. "alien.png")
+    -- 'shoot.png' seems large (18KB), might be a sheet or detailed. Using it as bullet.
+    self.imgBullet = loadImage(assetPath .. "shoot.png") 
+
+    -- Load Audio
+    local function loadAudio(path, type)
+        if love.filesystem.getInfo(path) then
+            return love.audio.newSource(path, type)
+        end
+        return nil
+    end
+
+    self.sndMusic = loadAudio(assetPath .. "space_ambiance.ogg", "stream")
+    self.sndShoot = loadAudio(assetPath .. "spaceship_attack.ogg", "static")
+    self.sndExplosion = loadAudio(assetPath .. "death_alien.ogg", "static")
+    
+    if self.sndMusic then
+        self.sndMusic:setLooping(true)
+        self.sndMusic:setVolume(0.5)
+        self.sndMusic:play()
+    end
+
     -- Reset game state
     self.width = 800
     self.height = 450
+    self.timer = 10 -- 10 seconds limit
     
     -- Player state
     self.playerX = self.width / 2
     self.playerY = self.height - PLAYER_HEIGHT - 10
-    self.playerColor = {0, 1, 0.5} -- Neon Green
     
     -- Projectiles
     self.bullets = {}
-    self.enemyBullets = {}
     self.particles = {}
     
     -- Enemies
     self.enemies = {}
     self.enemyDirection = 1
     self.enemySpeed = ENEMY_SPEED_BASE + (self.difficulty * 10)
-    self.moveTimer = 0
-    self.moveInterval = math.max(0.1, 1.0 - (self.difficulty * 0.1))
     
     self:spawnEnemies()
+    
+    -- Background Stars
+    self.stars = {}
+    -- Cover a large area to ensure full screen coverage even with scaling/translation
+    -- Local coords (0,0) is center of screen roughly. Screen is 1280x720, Game is 800x450.
+    -- We'll just spawn them in a massive range.
+    for i = 1, 400 do
+        table.insert(self.stars, {
+            x = math.random(-500, self.width + 500),
+            y = math.random(-500, self.height + 500),
+            size = math.random(1, 3),
+            alpha = math.random(50, 255) / 255
+        })
+    end
 end
 
 function SpaceInvader:spawnEnemies()
     local rows = 3 + math.floor(self.difficulty / 2)
     local cols = 8 + math.floor(self.difficulty / 2)
     
-    -- Limit rows/cols to fit screen
-    if rows > 6 then rows = 6 end
-    if cols > 12 then cols = 12 end
+    if rows > 5 then rows = 5 end
+    if cols > 10 then cols = 10 end
     
     local startX = (self.width - (cols * (ENEMY_WIDTH + ENEMY_PADDING))) / 2
     local startY = 40
@@ -61,20 +106,26 @@ function SpaceInvader:spawnEnemies()
                 y = startY + (row - 1) * (ENEMY_HEIGHT + ENEMY_PADDING),
                 width = ENEMY_WIDTH,
                 height = ENEMY_HEIGHT,
-                color = {1, 0.2, 0.5} -- Neon Pink
+                color = {1, 1, 1} -- White tint for sprites
             })
         end
     end
 end
 
 function SpaceInvader:update(dt)
+    -- Update Timer
+    self.timer = self.timer - dt
+    if self.timer <= 0 then
+        return 'lost'
+    end
+
     -- Update Bullets
     for i = #self.bullets, 1, -1 do
         local b = self.bullets[i]
         b.y = b.y - BULLET_SPEED * dt
         
         -- Remove if offscreen
-        if b.y < -10 then
+        if b.y < -50 then
             table.remove(self.bullets, i)
         else
             -- Check collision with enemies
@@ -84,7 +135,11 @@ function SpaceInvader:update(dt)
                     -- Hit!
                     table.remove(self.enemies, j)
                     table.remove(self.bullets, i)
-                    self:spawnExplosion(e.x + e.width/2, e.y + e.height/2, {1, 0.2, 0.5})
+                    if self.sndExplosion then
+                        self.sndExplosion:stop()
+                        self.sndExplosion:play()
+                    end
+                    self:spawnExplosion(e.x + e.width/2, e.y + e.height/2, {0.5, 1, 0.5})
                     break -- Bullet destroyed
                 end
             end
@@ -108,7 +163,6 @@ function SpaceInvader:update(dt)
         return 'won'
     end
     
-    -- Move enemies together
     local hitEdge = false
     local lowestY = 0
     
@@ -134,41 +188,52 @@ function SpaceInvader:update(dt)
         self.enemyDirection = -self.enemyDirection
         for _, e in ipairs(self.enemies) do
             e.y = e.y + ENEMY_DROP_DISTANCE
-            -- Push back inside to prevent getting stuck
             if e.x <= 0 then e.x = 0 end
             if e.x + e.width >= self.width then e.x = self.width - e.width end
         end
     end
     
-    return nil -- Continue playing
+    return nil
 end
 
 function SpaceInvader:draw()
+    -- Draw Background Stars with Scissor Disabled
+    local ox, oy, ow, oh = love.graphics.getScissor()
+    love.graphics.setScissor() -- Disable scissor to draw everywhere
+    
+    love.graphics.setColor(1, 1, 1)
+    for _, star in ipairs(self.stars) do
+        love.graphics.setColor(1, 1, 1, star.alpha)
+        love.graphics.circle("fill", star.x, star.y, star.size)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+    
+    love.graphics.setScissor(ox, oy, ow, oh) -- Restore scissor
+
+    -- Ensure images are loaded before using them
+    local function drawSprite(img, x, y, w, h)
+        if img then
+             -- Calculate scale to fit width/height
+             local sw = w / img:getWidth()
+             local sh = h / img:getHeight()
+             love.graphics.draw(img, x, y, 0, sw, sh)
+        else
+             -- Fallback rect
+             love.graphics.rectangle("fill", x, y, w, h)
+        end
+    end
+
     -- Draw Player
-    love.graphics.setColor(self.playerColor)
-    -- Simple ship shape
-    love.graphics.polygon("fill", 
-        self.playerX, self.playerY + PLAYER_HEIGHT, -- Bottom Left
-        self.playerX + PLAYER_WIDTH, self.playerY + PLAYER_HEIGHT, -- Bottom Right
-        self.playerX + PLAYER_WIDTH/2, self.playerY -- Top Center
-    )
+    drawSprite(self.imgPlayer, self.playerX, self.playerY, PLAYER_WIDTH, PLAYER_HEIGHT)
     
     -- Draw Bullets
-    love.graphics.setColor(0, 1, 1) -- Cyan bullets
     for _, b in ipairs(self.bullets) do
-        love.graphics.rectangle("fill", b.x, b.y, b.width, b.height)
+        drawSprite(self.imgBullet, b.x, b.y, b.width, b.height)
     end
     
     -- Draw Enemies
     for _, e in ipairs(self.enemies) do
-        love.graphics.setColor(e.color)
-        -- Alien shape (simple rect for now, maybe with eyes?)
-        love.graphics.rectangle("fill", e.x, e.y, e.width, e.height, 5, 5) -- Rounded rect
-        
-        -- Eyes
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.circle("fill", e.x + 8, e.y + 10, 3)
-        love.graphics.circle("fill", e.x + e.width - 8, e.y + 10, 3)
+        drawSprite(self.imgEnemy, e.x, e.y, e.width, e.height)
     end
     
     -- Draw Particles
@@ -176,9 +241,14 @@ function SpaceInvader:draw()
         love.graphics.setColor(p.color[1], p.color[2], p.color[3], p.alpha)
         love.graphics.circle("fill", p.x, p.y, p.size)
     end
+    love.graphics.setColor(1, 1, 1)
+    
+    -- Draw Timer
+    love.graphics.setColor(1, 0, 0)
+    love.graphics.printf("TIME: " .. math.ceil(self.timer), 0, 10, self.width, "center")
+    love.graphics.setColor(1, 1, 1)
 end
 
--- Mouse Inputs
 function SpaceInvader:mousepressed(x, y, button)
     if button == 2 then -- Right Click
         self:shoot()
@@ -186,16 +256,17 @@ function SpaceInvader:mousepressed(x, y, button)
 end
 
 function SpaceInvader:mousemoved(x, y, dx, dy)
-    -- Player follows mouse X directly
     self.playerX = x - PLAYER_WIDTH / 2
-    
-    -- Clamp to screen
     if self.playerX < 0 then self.playerX = 0 end
     if self.playerX > self.width - PLAYER_WIDTH then self.playerX = self.width - PLAYER_WIDTH end
 end
 
--- Helpers
 function SpaceInvader:shoot()
+    if self.sndShoot then
+        self.sndShoot:stop()
+        self.sndShoot:play()
+    end
+
     table.insert(self.bullets, {
         x = self.playerX + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2,
         y = self.playerY,
@@ -235,8 +306,22 @@ function SpaceInvader:spawnExplosion(x, y, color)
     end
 end
 
--- Pause/Resume needed?
-function SpaceInvader:pause() end
-function SpaceInvader:resume() end
+function SpaceInvader:leave()
+    if self.sndMusic then
+        self.sndMusic:stop()
+    end
+end
+
+function SpaceInvader:pause()
+    if self.sndMusic then
+        self.sndMusic:pause()
+    end
+end
+
+function SpaceInvader:resume()
+    if self.sndMusic then
+        self.sndMusic:play()
+    end
+end
 
 return SpaceInvader

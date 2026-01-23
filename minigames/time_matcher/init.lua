@@ -45,7 +45,7 @@ function TimeMatcher:enter(difficulty)
     -- Unified font for labels and numbers
     self.font26 = love.graphics.newFont(26)
     self.font52 = love.graphics.newFont(52) -- Double size (26 * 2)
-    
+
     -- Load Background
     self.bgImage = love.graphics.newImage("minigames/time_matcher/assets/fond.jpg")
 
@@ -53,10 +53,10 @@ function TimeMatcher:enter(difficulty)
     -- Alignez ces points avec le CENTRE de vos horloges sur l'image de fond.
     self.leftClockX = 436
     self.leftClockY = 290
-    
+
     self.rightClockX = 833
     self.rightClockY = 290
-    
+
     -- CONFIGURATION RAYON (Taille des aiguilles)
     self.clockRadius = 120
 
@@ -196,7 +196,7 @@ function TimeMatcher:draw()
     love.graphics.printf(timerText, 70 + 1, 280 - 2, 200, "left")
     love.graphics.setColor(1, 1, 1, 1) -- Main chalk stroke
     love.graphics.printf(timerText, 70, 280, 200, "left")
-    
+
     -- Draw Rounds (Right Center, 1/3 format, Chalk Effect)
     local roundsText = string.format("%d/%d", self.round, self.totalRounds)
     love.graphics.setColor(1, 1, 1, 0.3) -- Faint chalk dust
@@ -342,6 +342,27 @@ end
 function TimeMatcher:exit()
     if self.snd_ticking then
         self.snd_ticking:stop()
+    end
+end
+
+function TimeMatcher:leave()
+    if self.snd_ticking then
+        self.snd_ticking:stop()
+    end
+    if self.snd_dong then
+        self.snd_dong:stop()
+    end
+end
+
+function TimeMatcher:pause()
+    if self.snd_ticking then
+        self.snd_ticking:pause()
+    end
+end
+
+function TimeMatcher:resume()
+    if self.snd_ticking then
+        self.snd_ticking:play()
     end
 end
 

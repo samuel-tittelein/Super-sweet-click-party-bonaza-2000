@@ -9,13 +9,12 @@ function GameLost:enter(params)
     local w, h = 1280, 720
 
     table.insert(self.buttons, Button.new("Try Again", w / 2 - 100, h / 2 + 50, 200, 50, function()
-        gClickCount = 0
-        gGameLost = false
+        gResetGame()
         gStateMachine:change('game')
     end))
 
     table.insert(self.buttons, Button.new("Menu", w / 2 - 100, h / 2 + 120, 200, 50, function()
-        gGameLost = false
+        gResetGame()
         gStateMachine:change('menu')
     end))
 end

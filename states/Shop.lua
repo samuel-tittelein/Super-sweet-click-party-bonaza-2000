@@ -53,6 +53,28 @@ function Shop:buyItem(item, index)
         item.bought = true
         item:onBuy()
 
+        -- Check for Win Condition
+        local themedItems = {
+            "jeux_de_lettres", "informatique_et_etoile", "balade_dans_les_bois",
+            "cute_and_creepy", "chasse_aux_tresors", "merveilles_des_profondeurs",
+            "maitre_du_temps", "legende_etheree", "melodie_a_l_infini", "fete_des_clics"
+        }
+
+        local allBought = true
+        for _, theme in ipairs(themedItems) do
+            local path = "items." .. theme .. ".data"
+            local status, module = pcall(require, path)
+            if not status or not module.bought then
+                allBought = false
+                break
+            end
+        end
+
+        if allBought then
+            gStateMachine:change('won')
+            return
+        end
+
         -- Remove from shop display
         -- Ideally we disable the button or remove it, but for simplicity let's just mark it
         -- Actually finding the button to remove is tricky with this structure.

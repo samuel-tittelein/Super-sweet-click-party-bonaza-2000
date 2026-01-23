@@ -17,7 +17,7 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko'}
+    local minigameList = { 'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko' }
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -72,21 +72,21 @@ function GameLoop:nextLevel()
     if self.mode == 'single' then
         idx = self.targetGameIndex
         if self.minigameCount > 0 then
-             self.difficulty = math.floor(self.difficulty) + 1
+            self.difficulty = math.floor(self.difficulty) + 1
         end
     else
         -- Sequential loop: taupe -> popup -> taupe...
         -- availableMinigames has indices 1 (taupe) and 2 (popup) (and others if loaded)
         -- We want to loop 1, 2, 1, 2...
-        
+
         if self.currentMinigameIndex == 0 then
             idx = 1
         else
             idx = self.currentMinigameIndex + 1
-            if idx > 2 then 
-                idx = 1 
+            if idx > 2 then
+                idx = 1
                 self.difficulty = math.floor(self.difficulty) + 1
-            end 
+            end
         end
     end
 
@@ -227,6 +227,17 @@ end
 function GameLoop:keypressed(key)
     if key == 'escape' then
         gStateMachine:push('pause') -- Pause menu is on top
+    elseif gDevMode and key == 'space' then
+        -- Force Win
+        self.phase = 'result'
+        self.resultMessage = "DEV WIN"
+        self.timer = 0.5
+        self.score = self.score + 1
+        local bonus = (self.currentMinigame and self.currentMinigame.clickBonus) or 10
+        gClickCount = gClickCount + bonus
+    elseif gDevMode and key == 's' then
+        -- Go to Shop
+        gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
     else
         -- Item Inputs REMOVED (replaced by UI)
         -- 'd' for Downgrade logic removed

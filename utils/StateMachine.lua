@@ -78,4 +78,20 @@ function StateMachine:mousepressed(x, y, button)
     end
 end
 
+function StateMachine:mousereleased(x, y, button)
+    if #self.stack > 0 then
+        if self.stack[#self.stack].mousereleased then
+            self.stack[#self.stack]:mousereleased(x, y, button)
+        end
+    end
+end
+
+function StateMachine:mousemoved(x, y, dx, dy)
+    if #self.stack > 0 then
+        if self.stack[#self.stack].mousemoved then
+            self.stack[#self.stack]:mousemoved(x, y, dx, dy)
+        end
+    end
+end
+
 return StateMachine

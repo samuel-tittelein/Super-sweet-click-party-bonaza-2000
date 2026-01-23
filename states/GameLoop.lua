@@ -17,7 +17,8 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = { 'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko' }
+    local minigameList = { 'taupe', 'minigame2', 'minigame3', 'minigame4', 'minigame5', 'popup', 'stocks-timing', 'taiko',
+        'time_matcher' }
     for _, name in ipairs(minigameList) do
         local success, mg = pcall(require, 'minigames.' .. name .. '.init')
         if success then
@@ -26,8 +27,8 @@ function GameLoop:enter(params)
             print("Failed to load minigame: " .. name)
         end
     end
-    -- Add stocks-timing minigame
-    table.insert(self.availableMinigames, require('minigames.stocks-timing.init'))
+    -- Manual insertions removed in favor of list
+
 
 
     self.currentMinigame = nil
@@ -98,7 +99,7 @@ function GameLoop:nextLevel()
     self.gamesPlayedSinceShop = self.gamesPlayedSinceShop + 1
 
     self.phase = 'intro'
-    self.timer = 5 -- 5 seconds intro for item selection
+    self.timer = 1 -- 1 second intro for item selection
 
     -- Reset minigame
     if self.currentMinigame.enter then
@@ -296,6 +297,35 @@ function GameLoop:mousepressed(x, y, button)
                 startY = startY + 70
             end
         end
+    end
+end
+
+function GameLoop:mousereleased(x, y, button)
+    if self.phase == 'play' and self.currentMinigame.mousereleased then
+        -- Coordinate transform
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local mgScale = gameW / 1280
+
+        local mx = (x - gameX) / mgScale
+        local my = (y - gameY) / mgScale
+        self.currentMinigame:mousereleased(mx, my, button)
+    end
+end
+
+function GameLoop:mousemoved(x, y, dx, dy)
+    if self.phase == 'play' and self.currentMinigame.mousemoved then
+        -- Coordinate transform
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local mgScale = gameW / 1280
+
+        local mx = (x - gameX) / mgScale
+        local my = (y - gameY) / mgScale
+        local mdx = dx / mgScale
+        local mdy = dy / mgScale
+
+        self.currentMinigame:mousemoved(mx, my, mdx, mdy)
     end
 end
 

@@ -113,6 +113,26 @@ function love.mousepressed(x, y, button)
     end
 end
 
+function love.mousereleased(x, y, button)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        gStateMachine:mousereleased(vx, vy, button)
+    end
+end
+
+function love.mousemoved(x, y, dx, dy)
+    local vx = (x - gTransX) / gScale
+    local vy = (y - gTransY) / gScale
+    -- dx/dy also need scaling? Yes.
+    local vdx = dx / gScale
+    local vdy = dy / gScale
+
+    if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
+        gStateMachine:mousemoved(vx, vy, vdx, vdy)
+    end
+end
+
 function gResetGame()
     gClickCount = 0
     gClickPower = 1

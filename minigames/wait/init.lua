@@ -8,6 +8,9 @@ function Minigame:enter(difficulty)
     self.main = love.graphics.newImage("minigames/wait/assets/main.png")
     self.main_blesse = love.graphics.newImage("minigames/wait/assets/main_blesse.png")
     self.aie = love.audio.newSource("minigames/wait/assets/aie.ogg", "static")
+    self.music = love.audio.newSource("minigames/wait/assets/bouclebatterieminimalistebaton-cropped.ogg", "stream")
+    self.music:setLooping(true)
+    self.music:play()
     self.state = "waiting"
     self.timer = 0
     self.winTime = 5
@@ -26,7 +29,6 @@ function Minigame:update(dt)
         if self.timer >= self.winTime then
             self.state = "won"
             self.won = true
-            return "won"
         end
     end
     if self.state == "lost" then
@@ -35,6 +37,9 @@ function Minigame:update(dt)
         if self.lostTimer >= 1 then -- délai d'1 seconde avant de retourner "lost"
             return "lost"
         end
+    end
+    if self.state == "won" then
+        return "won"
     end
     return nil
 end
@@ -46,6 +51,12 @@ function Minigame:mousepressed(x, y, button)
             self.aie:stop()
             self.aie:play()
         end
+    end
+end
+
+function Minigame:leave()
+    if self.music then
+        self.music:stop()
     end
 end
 

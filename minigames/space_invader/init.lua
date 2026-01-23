@@ -5,17 +5,17 @@ local SpaceInvader = {
 }
 
 -- Game Constants
-local PLAYER_WIDTH = 40
-local PLAYER_HEIGHT = 40
-local BULLET_SPEED = 600
-local BULLET_WIDTH = 10
-local BULLET_HEIGHT = 20
-local ENEMY_WIDTH = 40
-local ENEMY_HEIGHT = 40
-local ENEMY_PADDING = 15
-local ENEMY_SPEED_BASE = 50
+local PLAYER_WIDTH = 60
+local PLAYER_HEIGHT = 60
+local BULLET_SPEED = 800
+local BULLET_WIDTH = 12
+local BULLET_HEIGHT = 25
+local ENEMY_WIDTH = 60
+local ENEMY_HEIGHT = 60
+local ENEMY_PADDING = 20
+local ENEMY_SPEED_BASE = 70
 -- Reduce drop distance to give player more time as sprites might be larger visually
-local ENEMY_DROP_DISTANCE = 15
+local ENEMY_DROP_DISTANCE = 20
 
 function SpaceInvader:enter(difficulty)
     self.difficulty = difficulty or 1
@@ -33,7 +33,6 @@ function SpaceInvader:enter(difficulty)
 
     self.imgPlayer = loadImage(assetPath .. "spaceship.png")
     self.imgEnemy = loadImage(assetPath .. "alien.png")
-    -- 'shoot.png' seems large (18KB), might be a sheet or detailed. Using it as bullet.
     self.imgBullet = loadImage(assetPath .. "shoot.png") 
 
     -- Load Audio
@@ -55,13 +54,14 @@ function SpaceInvader:enter(difficulty)
     end
 
     -- Reset game state
-    self.width = 800
-    self.height = 450
+    -- Use 1280x720 as internal resolution to match GameLoop scaling
+    self.width = 1280
+    self.height = 720
     self.timer = 10 -- 10 seconds limit
     
     -- Player state
     self.playerX = self.width / 2
-    self.playerY = self.height - PLAYER_HEIGHT - 10
+    self.playerY = self.height - PLAYER_HEIGHT - 20
     
     -- Projectiles
     self.bullets = {}
@@ -76,28 +76,31 @@ function SpaceInvader:enter(difficulty)
     
     -- Background Stars
     self.stars = {}
-    -- Cover a large area to ensure full screen coverage even with scaling/translation
-    -- Local coords (0,0) is center of screen roughly. Screen is 1280x720, Game is 800x450.
-    -- We'll just spawn them in a massive range.
+    -- Cover a large area to ensure full screen coverage
     for i = 1, 400 do
         table.insert(self.stars, {
             x = math.random(-500, self.width + 500),
             y = math.random(-500, self.height + 500),
-            size = math.random(1, 3),
+            size = math.random(2, 5), -- Bigger stars for higher res
             alpha = math.random(50, 255) / 255
         })
     end
 end
 
 function SpaceInvader:spawnEnemies()
-    local rows = 3 + math.floor(self.difficulty / 2)
-    local cols = 8 + math.floor(self.difficulty / 2)
+    -- Base grid: 3 rows, 6 cols scaling
+    -- Difficulty effects
+    local rows = 3 + math.ceil(self.difficulty * 0.5) 
+    local cols = 6 + math.ceil(self.difficulty * 0.8)
     
-    if rows > 5 then rows = 5 end
-    if cols > 10 then cols = 10 end
+    -- Caps to fit screen (1280x720)
+    -- Max height: 6 rows * 80px = 480px (leaving space)
+    -- Max width: 14 cols * 80px = 1120px
+    if rows > 6 then rows = 6 end
+    if cols > 14 then cols = 14 end
     
     local startX = (self.width - (cols * (ENEMY_WIDTH + ENEMY_PADDING))) / 2
-    local startY = 40
+    local startY = 60
     
     for row = 1, rows do
         for col = 1, cols do

@@ -18,7 +18,7 @@ function MinigameSelector:enter()
     local startY = 200
     local padding = 20
 
-    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5', 'Popup', 'Stocks', 'Taiko', 'Burger', 'Time Matcher', 'Stick Catch', 'Wait (Cactus)' }
+    local gameNames = {'Taupe', 'Game 2', 'Game 3', 'Game 4', 'Game 5', 'Popup', 'Stocks', 'Taiko', 'Burger', 'Time Matcher', 'Stick Catch', 'Wait (Cactus)', 'Geometry Dash' }
     for i = 1, #gameNames do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols

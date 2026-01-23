@@ -7,6 +7,7 @@ local MainMenu = require 'states.MainMenu'
 gStateMachine = nil
 gClickCount = 0
 gClickPower = 1
+gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
 
 -- Base resolution

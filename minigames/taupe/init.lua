@@ -1,5 +1,10 @@
 local Minigame = {}
 
+function Minigame:addLife()
+    self.maxMisses = self.maxMisses + 1
+    self.msgTimer = 1 -- Show message
+end
+
 -- Whack-a-Mole Minigame
 -- Goal: Hit the required number of moles to win.
 -- Controls: Mouse click
@@ -142,9 +147,13 @@ function Minigame:update(dt)
 
     -- Timeout is now victory if not lost
     -- (Handled in timer check above)
-    if self.timer <= 0 and not self.lost then
+        if self.timer <= 0 and not self.lost then
          self.won = true
          return "won"
+    end
+    
+    if self.msgTimer and self.msgTimer > 0 then
+        self.msgTimer = self.msgTimer - dt
     end
 
     if self.missed >= self.maxMisses then
@@ -196,6 +205,12 @@ function Minigame:draw()
     love.graphics.printf("SURVIVE!", 0, 50, 1280, "center")
     love.graphics.printf("TIME: " .. math.ceil(self.timer) .. " | LEVEL: " .. self.difficulty, 0, 80, 1280, "center")
     love.graphics.printf("SCORE: " .. self.score .. " | MISSES: " .. self.missed .. "/" .. self.maxMisses, 0, 110, 1280, "center")
+    
+    if self.msgTimer and self.msgTimer > 0 then
+        love.graphics.setColor(0, 1, 0)
+        love.graphics.newFont(30)
+        love.graphics.printf("EXTRA LIFE!", 0, 150, 1280, "center")
+    end
 
     -- Draw holes and moles
     for _, hole in ipairs(self.grid) do

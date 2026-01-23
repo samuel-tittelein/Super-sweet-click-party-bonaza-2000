@@ -16,10 +16,15 @@ function Shop:enter(params)
     for _, file in ipairs(files) do
         local info = love.filesystem.getInfo(itemsDir .. "/" .. file)
         if info.type == "directory" then
-            local itemPath = itemsDir .. "." .. file .. ".data"
+            -- Try requiring 'init' or 'data' or just folder name
+            -- Standard lua require for folder 'items.name' loads 'items/name/init.lua'
+            local itemPath = itemsDir .. "." .. file
             local success, itemModule = pcall(require, itemPath)
-            if success and not itemModule.bought then
-                table.insert(availableItems, itemModule)
+            if success then
+                 -- If it's consumable, always add. If not, check if bought.
+                if itemModule.type == 'consumable' or not itemModule.bought then
+                    table.insert(availableItems, itemModule)
+                end
             end
         end
     end
@@ -50,8 +55,13 @@ end
 function Shop:buyItem(item, index)
     if gClickCount >= item.price then
         gClickCount = gClickCount - item.price
-        item.bought = true
-        item:onBuy()
+        
+        if item.type == 'consumable' then
+            gInventory[item.key] = (gInventory[item.key] or 0) + 1
+        else
+            item.bought = true
+            item:onBuy()
+        end
 
         -- Remove from shop display
         -- Ideally we disable the button or remove it, but for simplicity let's just mark it
@@ -68,11 +78,17 @@ function Shop:buyItem(item, index)
             gStateMachine:change('game', { score = self.score, difficulty = self.difficulty, continue = true })
         end))
 
-        -- Re-add buy buttons, but check if bought
+        -- Re-add buy buttons
         for i, shopItem in ipairs(self.shopItems) do
             local btnX = 200 + (i - 1) * 350
             local btnY = 400
-            if not shopItem.bought then
+            
+            -- If consumable, always show button. If not, show only if not bought.
+            if shopItem.type == 'consumable' then
+                table.insert(self.buttons, Button.new("Buy", btnX, btnY, 100, 40, function()
+                    self:buyItem(shopItem, i)
+                end))
+            elseif not shopItem.bought then
                 table.insert(self.buttons, Button.new("Buy", btnX, btnY, 100, 40, function()
                     self:buyItem(shopItem, i)
                 end))
@@ -111,12 +127,16 @@ function Shop:draw()
             love.graphics.pop()
         end
 
-        if item.bought then
+        if item.bought and item.type ~= 'consumable' then
             love.graphics.setColor(0, 1, 0)
             love.graphics.printf("BOUGHT", x, y + 200, 200, "center")
         else
             love.graphics.setColor(1, 1, 0)
             love.graphics.printf("Price: " .. item.price, x, y + 160, 200, "center")
+            if item.type == 'consumable' then
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.printf("Stock: " .. (gInventory[item.key] or 0), x, y + 185, 200, "center") 
+            end
         end
     end
 

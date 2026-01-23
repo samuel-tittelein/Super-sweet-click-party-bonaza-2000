@@ -37,12 +37,28 @@ function GameLoop:enter(params)
     self.timer = 0
     self.resultMessage = ""
 
+    -- Load item definitions for UI
+    self.itemDefs = {}
+    local itemFiles = {'heart', 'downgrade'} 
+    -- We assume they exist in items/name/init.lua now
+    for _, name in ipairs(itemFiles) do
+        local success, itemTitle = pcall(require, 'items.' .. name .. '.init')
+        if success then
+            self.itemDefs[name] = itemTitle
+        end
+    end
+
     self:nextLevel()
 end
 
 function GameLoop:nextLevel()
     -- Check for shop
-    if self.mode ~= 'single' and self.gamesPlayedSinceShop >= 5 then
+    -- Check for shop
+    -- "tous les autant de niveaux qu'il existe" -> #availableMinigames
+    local shopInterval = #self.availableMinigames
+    if shopInterval < 3 then shopInterval = 3 end -- Minimum logic if few games
+
+    if self.mode ~= 'single' and self.gamesPlayedSinceShop >= shopInterval then
         gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
         return
     end
@@ -82,7 +98,7 @@ function GameLoop:nextLevel()
     self.gamesPlayedSinceShop = self.gamesPlayedSinceShop + 1
 
     self.phase = 'intro'
-    self.timer = 2 -- 2 seconds intro
+    self.timer = 5 -- 5 seconds intro for item selection
 
     -- Reset minigame
     if self.currentMinigame.enter then
@@ -170,7 +186,36 @@ function GameLoop:draw()
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf("GET READY!", 0, 300, 1280, "center")
+        love.graphics.printf("GET READY!", 0, 300, 1280, "center")
         love.graphics.printf(string.format("%.1f", self.timer), 0, 350, 1280, "center")
+        
+        -- Draw UI Items
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.newFont(20)
+        love.graphics.print("BONUS ITEMS:", 1000, 150)
+        
+        local startY = 200
+        for name, def in pairs(self.itemDefs) do
+            local count = gInventory[name] or 0
+            if count > 0 then
+                -- Draw box logic (simple)
+                love.graphics.setColor(1, 1, 1, 0.5)
+                love.graphics.rectangle("fill", 1000, startY, 200, 60)
+                
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.print(def.name .. " x" .. count, 1010, startY + 20)
+                
+                -- Draw logic from item definition?
+                if def.draw then
+                    love.graphics.push()
+                    -- icon size?
+                    def:draw(1150, startY + 10, 1) 
+                    love.graphics.pop()
+                end
+                
+                startY = startY + 70
+            end
+        end
     elseif self.phase == 'result' then
         love.graphics.setColor(0, 0, 0, 0.7)
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
@@ -183,6 +228,10 @@ function GameLoop:keypressed(key)
     if key == 'escape' then
         gStateMachine:push('pause') -- Pause menu is on top
     else
+        -- Item Inputs REMOVED (replaced by UI)
+        -- 'd' for Downgrade logic removed
+        -- 'h' for Heart logic removed
+
         if self.phase == 'play' and self.currentMinigame.keypressed then
             self.currentMinigame:keypressed(key)
         end
@@ -200,6 +249,34 @@ function GameLoop:mousepressed(x, y, button)
         local my = (y - gameY) / mgScale
 
         self.currentMinigame:mousepressed(mx, my, button)
+    elseif self.phase == 'intro' and button == 1 then
+        -- Check clicks on items
+        local startY = 200
+        for name, def in pairs(self.itemDefs) do
+            local count = gInventory[name] or 0
+            if count > 0 then
+                if x >= 1000 and x <= 1200 and y >= startY and y <= startY + 60 then
+                    -- Item Clicked!
+                    if name == 'heart' then
+                        if self.currentMinigame.addLife then
+                            gInventory.heart = gInventory.heart - 1
+                            self.currentMinigame:addLife()
+                            -- optional feedback in log or sound
+                        end
+                    elseif name == 'downgrade' then
+                        if self.difficulty > 1 then
+                            gInventory.downgrade = gInventory.downgrade - 1
+                            self.difficulty = self.difficulty - 1
+                            if self.currentMinigame.enter then
+                                self.currentMinigame:enter(self.difficulty)
+                            end
+                        end
+                    end
+                    return -- Handle one click
+                end
+                startY = startY + 70
+            end
+        end
     end
 end
 

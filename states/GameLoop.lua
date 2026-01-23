@@ -90,6 +90,11 @@ function GameLoop:nextLevel()
         end
     end
 
+    -- Cleanup previous minigame
+    if self.currentMinigame and self.currentMinigame.leave then
+        self.currentMinigame:leave()
+    end
+
     self.currentMinigame = self.availableMinigames[idx]
     self.currentMinigameIndex = idx
 
@@ -224,9 +229,29 @@ function GameLoop:draw()
     end
 end
 
+function GameLoop:exit()
+    if self.currentMinigame and self.currentMinigame.leave then
+        self.currentMinigame:leave()
+    end
+end
+
+function GameLoop:onPause()
+    love.mouse.setVisible(true)
+    if self.currentMinigame and self.currentMinigame.pause then
+        self.currentMinigame:pause()
+    end
+    gStateMachine:push('pause')
+end
+
+function GameLoop:resume()
+    if self.currentMinigame and self.currentMinigame.resume then
+        self.currentMinigame:resume()
+    end
+end
+
 function GameLoop:keypressed(key)
     if key == 'escape' then
-        gStateMachine:push('pause') -- Pause menu is on top
+        self:onPause()
     else
         -- Item Inputs REMOVED (replaced by UI)
         -- 'd' for Downgrade logic removed

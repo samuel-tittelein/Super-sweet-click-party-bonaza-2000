@@ -40,7 +40,9 @@ function Minigame:enter(difficulty)
         self.cursorImg = love.graphics.newImage("minigames/burger/assets/gant-removebg-preview.png")
         
         self.soundHappy = love.audio.newSource("minigames/burger/assets/Happy.ogg", "static")
+        self.soundHappy = love.audio.newSource("minigames/burger/assets/Happy.ogg", "static")
         self.soundUnhappy = love.audio.newSource("minigames/burger/assets/Unhappy.ogg", "static")
+        self.bgMusic = love.audio.newSource("minigames/burger/assets/fond_sonore.ogg", "stream")
         
         self.imagesLoaded = true
     end
@@ -111,6 +113,29 @@ function Minigame:enter(difficulty)
     
     -- Hide default cursor
     love.mouse.setVisible(false)
+
+    -- Play background music
+    if self.bgMusic then
+        self.bgMusic:setLooping(true)
+        self.bgMusic:play()
+    end
+end
+
+function Minigame:leave()
+    if self.bgMusic then
+        self.bgMusic:stop()
+    end
+end
+
+function Minigame:pause()
+    if self.bgMusic then self.bgMusic:pause() end
+    -- Also stop looping sfx if any? (none looping here)
+end
+
+function Minigame:resume()
+    if self.bgMusic then self.bgMusic:play() end
+    -- Hide cursor again as we are back in game
+    love.mouse.setVisible(false)
 end
 
 function Minigame:update(dt)
@@ -137,6 +162,7 @@ function Minigame:update(dt)
     if self.timer >= self.maxTime then
         self.lost = true
         self.endTimer = 3 -- Wait 3 seconds to show lost screen
+        if self.bgMusic then self.bgMusic:stop() end
         if self.soundUnhappy then self.soundUnhappy:play() end
     end
     
@@ -319,6 +345,7 @@ function Minigame:addIngredient(ingredient)
              -- Add top bun automatically
              table.insert(self.currentStack, INGREDIENTS.BUN_TOP)
              self.won = true
+             if self.bgMusic then self.bgMusic:stop() end
              if self.soundHappy then self.soundHappy:play() end
              self.endTimer = 1.5 -- Show win screen for 1.5 seconds
         end

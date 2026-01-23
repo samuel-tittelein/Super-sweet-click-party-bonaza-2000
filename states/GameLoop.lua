@@ -79,8 +79,13 @@ function GameLoop:update(dt)
         if result == 'won' then
             self.phase = 'result'
             self.resultMessage = "YOU WON!"
-            self.timer = 1                          -- Show result for 1s
+            self.timer = 1 -- Show result for 1s
             self.score = self.score + 1
+
+            -- Add click bonus
+            local bonus = self.currentMinigame.clickBonus or 10
+            gClickCount = gClickCount + bonus
+
             self.difficulty = self.difficulty + 0.1 -- Example difficulty increase
         elseif result == 'lost' then
             gStateMachine:change('lost', { score = self.score })
@@ -111,7 +116,7 @@ function GameLoop:draw()
         -- Draw UI Text
         love.graphics.setColor(1, 1, 1)
         love.graphics.newFont(30)
-        love.graphics.printf("GAME UI TEMPLATE - Score: " .. self.score, 0, 20, 1280, "center")
+        love.graphics.printf("GAME UI TEMPLATE - Score (Clicks): " .. gClickCount, 0, 20, 1280, "center")
 
         -- Clip and Draw Game
         love.graphics.setScissor(gTransX + (gameX * gScale), gTransY + (gameY * gScale), gameW * gScale, gameH * gScale)

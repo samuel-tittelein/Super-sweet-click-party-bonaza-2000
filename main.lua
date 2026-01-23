@@ -3,7 +3,10 @@ require 'conf'
 
 -- Global StateMachine
 local StateMachine = require 'utils.StateMachine'
+local MainMenu = require 'states.MainMenu'
 gStateMachine = nil
+gClickCount = 0
+gGameLost = false
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280
@@ -19,7 +22,7 @@ function love.load()
 
     -- Load states
     local states = {
-        ['menu'] = require 'states.MainMenu',
+        ['menu'] = MainMenu,
         ['game'] = require 'states.GameLoop',
         ['shop'] = require 'states.Shop',
         ['selector'] = require 'states.MinigameSelector',
@@ -70,6 +73,12 @@ function love.draw()
     love.graphics.pop()
 
     -- Draw black bars if needed (letterboxing is handled by the screen clear)
+
+    -- Draw Global Click Counter
+    if gStateMachine.stack[#gStateMachine.stack] ~= MainMenu then
+        love.graphics.setColor(1, 1, 1, 1) -- Ensure white color
+        love.graphics.print("Clicks: " .. gClickCount, 10, 10)
+    end
 end
 
 function love.keypressed(key)
@@ -83,5 +92,11 @@ function love.mousepressed(x, y, button)
 
     if vx >= 0 and vx <= VIRTUAL_WIDTH and vy >= 0 and vy <= VIRTUAL_HEIGHT then
         gStateMachine:mousepressed(vx, vy, button)
+    end
+
+    if button == 1 or button == 2 then
+        if not gGameLost then
+            gClickCount = gClickCount + 1
+        end
     end
 end

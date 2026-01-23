@@ -1,11 +1,12 @@
 local Minigame = {}
 
 function Minigame:enter(difficulty)
-    self.color = {math.random(), math.random(), math.random()}
+    self.color = { math.random(), math.random(), math.random() }
     self.timer = 0
     self.won = false
     self.lost = false
     self.difficulty = difficulty or 1
+    self.clickBonus = 50 -- Test bonus
 end
 
 function Minigame:update(dt)

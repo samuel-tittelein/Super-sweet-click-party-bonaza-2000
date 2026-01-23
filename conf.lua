@@ -6,4 +6,6 @@ function love.conf(t)
     t.window.minwidth = 800
     t.window.minheight = 600
     t.modules.physics = false -- We might use bump instead
+    t.modules.audio = true
+    t.modules.sound = true
 end

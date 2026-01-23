@@ -117,6 +117,7 @@ function Minigame:enter(difficulty)
     -- Play background music
     if self.bgMusic then
         self.bgMusic:setLooping(true)
+        print("AUDIO: Playing burger bgMusic")
         self.bgMusic:play()
     end
 end
@@ -346,7 +347,10 @@ function Minigame:addIngredient(ingredient)
              table.insert(self.currentStack, INGREDIENTS.BUN_TOP)
              self.won = true
              if self.bgMusic then self.bgMusic:stop() end
-             if self.soundHappy then self.soundHappy:play() end
+             if self.soundHappy then 
+                print("AUDIO: Playing happy sound")
+                self.soundHappy:play() 
+             end
              self.endTimer = 1.5 -- Show win screen for 1.5 seconds
         end
     else

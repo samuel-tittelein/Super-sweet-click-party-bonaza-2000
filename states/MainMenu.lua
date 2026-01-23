@@ -7,11 +7,13 @@ function MainMenu:enter()
 
     -- Start Button
     table.insert(self.buttons, Button.new("Start Game", w / 2 - 100, h / 2 - 50, 200, 50, function()
+        gClickCount = 0
         gStateMachine:change('game')
     end))
 
     -- Selector Button
     table.insert(self.buttons, Button.new("Minigames", w / 2 - 100, h / 2 + 20, 200, 50, function()
+        gClickCount = 0
         gStateMachine:change('selector')
     end))
 

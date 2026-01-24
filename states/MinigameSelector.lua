@@ -29,16 +29,22 @@ function MinigameSelector:enter()
             gStateMachine:change('game', { mode = 'single', gameIndex = i, difficulty = self.selectedLevel })
         end))
     end
+
+    -- Pre-create fonts for performance
+    self.fonts = {
+        title = love.graphics.newFont(30),
+        subtitle = love.graphics.newFont(20)
+    }
 end
 
 function MinigameSelector:draw()
     love.graphics.clear(0.1, 0.1, 0.2)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.newFont(30)
+    love.graphics.setFont(self.fonts.title)
     love.graphics.printf("SELECT A MINIGAME", 0, 100, 1280, "center")
 
     love.graphics.printf("< Level " .. self.selectedLevel .. " >", 0, 150, 1280, "center")
-    love.graphics.newFont(20)
+    love.graphics.setFont(self.fonts.subtitle)
     love.graphics.printf("(Use Left/Right arrows to change)", 0, 180, 1280, "center")
 
     for _, btn in ipairs(self.buttons) do

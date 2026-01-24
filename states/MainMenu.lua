@@ -45,29 +45,35 @@ function MainMenu:draw()
     Speakers.draw(leftX, y, boxW, boxH, false)
     Speakers.draw(rightX, y, boxW, boxH, true)
     
-    local rects = MenuUI.draw(w, h)
-    self.btn1, self.btn2, self.btn3 = rects.btn1, rects.btn2, rects.btn3
+    local rects = MenuUI.draw(w, h, self.time)
+    self.btn1, self.btn2, self.btn3, self.btnSettings = rects.btn1, rects.btn2, rects.btn3, rects.btnSettings
 end
 
 function MainMenu:mousepressed(x, y, button)
     -- Check button 1: "NE ME CLIQUE PAS" (Start Game)
-    if self.btn1 and x > self.btn1.x and x < self.btn1.x + self.btn1.w and 
-       y > self.btn1.y and y < self.btn1.y + self.btn1.h then
+    if self.btn1 and x >= self.btn1.x and x <= self.btn1.x + self.btn1.w and 
+       y >= self.btn1.y and y <= self.btn1.y + self.btn1.h then
         gClickCount = gClickCount + 1
         gStateMachine:change('game')
     end
     
     -- Check button 2: "CLIQUE MOI FORT" (Minigames)
-    if self.btn2 and x > self.btn2.x and x < self.btn2.x + self.btn2.w and 
-       y > self.btn2.y and y < self.btn2.y + self.btn2.h then
+    if self.btn2 and x >= self.btn2.x and x <= self.btn2.x + self.btn2.w and 
+       y >= self.btn2.y and y <= self.btn2.y + self.btn2.h then
         gClickCount = 0
         gStateMachine:change('selector')
     end
     
     -- Check button 3: "NE ME CLIQUE SURTOUT PAS" (Quit)
-    if self.btn3 and x > self.btn3.x and x < self.btn3.x + self.btn3.w and 
-       y > self.btn3.y and y < self.btn3.y + self.btn3.h then
+    if self.btn3 and x >= self.btn3.x and x <= self.btn3.x + self.btn3.w and 
+       y >= self.btn3.y and y <= self.btn3.y + self.btn3.h then
         love.event.quit()
+    end
+    
+    -- Check settings button
+    if self.btnSettings and x >= self.btnSettings.x and x <= self.btnSettings.x + self.btnSettings.w and 
+       y >= self.btnSettings.y and y <= self.btnSettings.y + self.btnSettings.h then
+        gStateMachine:push('settings')
     end
 end
 

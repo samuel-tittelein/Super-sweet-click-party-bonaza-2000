@@ -5,7 +5,8 @@ local images = {
     logo = nil,
     btn1 = nil,
     btn2 = nil,
-    btn3 = nil
+    btn3 = nil,
+    settings = nil
 }
 
 -- Lazy load images
@@ -15,11 +16,12 @@ local function loadImages()
         images.btn1 = love.graphics.newImage('assets/ne_me_clique_pas.png')
         images.btn2 = love.graphics.newImage('assets/clique_moi_fort.png')
         images.btn3 = love.graphics.newImage('assets/ne_me_clique_surtout_pas.png')
+        images.settings = love.graphics.newImage('assets/parametre.png')
     end
 end
 
--- Draws logo and three buttons; returns button rects
-function M.draw(w, h)
+-- Draws logo, three buttons, and settings button; returns button rects
+function M.draw(w, h, time)
     loadImages()
 
     -- Draw logo at top center (scaled down to 50%)
@@ -60,6 +62,32 @@ function M.draw(w, h)
     love.graphics.draw(images.btn1, btn1X, btn1Y)
     love.graphics.draw(images.btn2, btn2X, btn2Y)
     love.graphics.draw(images.btn3, btn3X, btn3Y)
+
+    -- Draw rotating settings button (top right area)
+    if images.settings then
+        local settingsW, settingsH = images.settings:getWidth(), images.settings:getHeight()
+        local settingsX = w - settingsW - 40
+        local settingsY = 40
+        
+        local btnSettings = { x = settingsX, y = settingsY, w = settingsW, h = settingsH }
+        
+        -- Rotation animation
+        local rotation = time * 1.5 -- Rotation speed
+        
+        love.graphics.push()
+        love.graphics.translate(settingsX + settingsW / 2, settingsY + settingsH / 2)
+        love.graphics.rotate(rotation)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(images.settings, -settingsW / 2, -settingsH / 2)
+        love.graphics.pop()
+        
+        return {
+            btn1 = btn1,
+            btn2 = btn2,
+            btn3 = btn3,
+            btnSettings = btnSettings,
+        }
+    end
 
     return {
         btn1 = btn1,

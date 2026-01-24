@@ -617,16 +617,10 @@ end
 
 function GameLoop:mousepressed(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousepressed then
-        -- Need to adjust mouse coordinates to minigame space if we are scaling/translating
-        -- Recalculate current geometry (duplication of draw logic, unavoidable without refactor)
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
-        
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -666,14 +660,10 @@ end
 
 function GameLoop:mousereleased(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousereleased then
-        -- Coordinate transform
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -684,14 +674,10 @@ end
 
 function GameLoop:mousemoved(x, y, dx, dy)
     if self.phase == 'play' and self.currentMinigame.mousemoved then
-        -- Coordinate transform
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale

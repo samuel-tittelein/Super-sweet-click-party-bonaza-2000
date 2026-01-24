@@ -170,7 +170,7 @@ function Minigame:draw()
     
     -- Difficulty indicator
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Difficulty: " .. self.difficulty, 0, 680, 1280, "center")
+
     
     self:drawPlayerHand()
 end

@@ -7,7 +7,7 @@ local MainMenu = require 'states.MainMenu'
 gStateMachine = nil
 gClickCount = 0
 gClickPower = 1
-gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
+gInventory = {} -- Unlimited items for testing
 gGameLost = false
 gDevMode = true
 gLives = 3
@@ -100,12 +100,6 @@ function love.draw()
     love.graphics.pop()
 
     -- Draw black bars if needed (letterboxing is handled by the screen clear)
-
-    -- Draw Global Click Counter
-    if gStateMachine.stack[#gStateMachine.stack] ~= MainMenu then
-        love.graphics.setColor(1, 1, 1, 1) -- Ensure white color
-        love.graphics.print("Clicks: " .. gClickCount, 10, 10)
-    end
 end
 
 function love.keypressed(key)

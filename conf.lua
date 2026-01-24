@@ -1,5 +1,5 @@
 function love.conf(t)
-    t.window.title = "GameJam"
+    t.window.title = "Super sweet clic party bonaza 2000"
     t.window.width = 1280
     t.window.height = 720
     t.window.resizable = true

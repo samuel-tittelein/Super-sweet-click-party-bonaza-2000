@@ -98,12 +98,18 @@ function Minigame:enter(difficulty)
     
     -- Try to load images (fallback to shapes if not available)
     self.useImages = false
-    local success1, normalImg = pcall(love.graphics.newImage, "minigames/find-different/assets/images/normal.png")
-    local success2, treasureImg = pcall(love.graphics.newImage, "minigames/find-different/assets/images/treasure.png")
+    local success1, normalImg = pcall(love.graphics.newImage, "minigames/find-different/assets/tresor.png")
+    local success2, treasureImg = pcall(love.graphics.newImage, "minigames/find-different/assets/tresor_different.png")
+    local successBg, bgImg = pcall(love.graphics.newImage, "minigames/find-different/assets/vieux-fond-carte-au-tresor-vierge.jpg")
+    
     if success1 and success2 then
         self.img_normal = normalImg
         self.img_treasure = treasureImg
         self.useImages = true
+    end
+    
+    if successBg then
+        self.img_background = bgImg
     end
 end
 
@@ -226,9 +232,15 @@ function Minigame:update(dt)
 end
 
 function Minigame:draw()
-    -- Background
-    love.graphics.setColor(0.15, 0.15, 0.2, 1)
-    love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    -- Background image
+    if self.img_background then
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(self.img_background, 0, 0, 0, 1280 / self.img_background:getWidth(), 720 / self.img_background:getHeight())
+    else
+        -- Fallback background color
+        love.graphics.setColor(0.15, 0.15, 0.2, 1)
+        love.graphics.rectangle("fill", 0, 0, 1280, 720)
+    end
     
     -- Draw all objects
     for _, obj in ipairs(self.objects) do
@@ -274,7 +286,8 @@ function Minigame:drawObject(obj)
         -- Draw with images
         local img = (obj.type == 'treasure') and self.img_treasure or self.img_normal
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(img, 0, 0, 0, currentScale, currentScale,
+        local imgScale = currentScale * 0.30 -- Reduced scale for better visibility
+        love.graphics.draw(img, 0, 0, 0, imgScale, imgScale,
             img:getWidth() / 2, img:getHeight() / 2)
     else
         -- Draw placeholder shapes

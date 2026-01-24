@@ -1,7 +1,9 @@
 -- minigames/stocks-timing/init.lua
 local Button = require 'utils.Button'
 
-local Minigame = {}
+local Minigame = {
+    instruction = "INVESTIS !"
+}
 
 function Minigame:enter(difficulty)
     self.difficulty = difficulty or 1

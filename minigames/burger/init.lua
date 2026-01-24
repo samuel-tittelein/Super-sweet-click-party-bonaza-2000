@@ -1,4 +1,6 @@
-local Minigame = {}
+local Minigame = {
+    instruction = "EMPILE !"
+}
 
 -- Ingredient Definitions (images loaded in enter)
 local INGREDIENTS = {

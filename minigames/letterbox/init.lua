@@ -1,6 +1,7 @@
 ---@diagnostic disable: undefined-global
 local Minigame = {
-    name = 'letterbox'
+    name = 'letterbox',
+    instruction = "POSTE !"
 }
 
 function Minigame:enter(difficulty)

@@ -1,4 +1,6 @@
-local Minigame = {}
+local Minigame = {
+    instruction = "TAPE !"
+}
 
 -- Helper to safely load image
 local function safeLoad(path)

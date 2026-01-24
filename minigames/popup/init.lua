@@ -1,4 +1,6 @@
-local Minigame = {}
+local Minigame = {
+    instruction = "FERME !"
+}
 
 -- Popup Minigame
 -- Goal: Close all popup windows

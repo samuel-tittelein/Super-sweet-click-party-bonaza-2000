@@ -397,12 +397,21 @@ function GameLoop:draw()
 
     -- Draw Phase Overlays
     if self.phase == 'intro' then
-        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.setColor(0, 0, 0, 0.85)
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
+
+        -- WarioWare-style instruction text
+        local instruction = self.currentMinigame and self.currentMinigame.instruction or "GO!"
+
+        -- Big bold instruction text
+        love.graphics.setFont(self.fonts.large)
+        love.graphics.setColor(1, 1, 0) -- Yellow for visibility
+        love.graphics.printf(instruction, 0, 280, 1280, "center")
+
+        -- Smaller countdown below
+        love.graphics.setFont(self.fonts.medium)
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf("GET READY!", 0, 300, 1280, "center")
-        love.graphics.printf("GET READY!", 0, 300, 1280, "center")
-        love.graphics.printf(string.format("%.1f", self.timer), 0, 350, 1280, "center")
+        love.graphics.printf(string.format("%.0f", math.ceil(self.timer)), 0, 360, 1280, "center")
 
         -- Draw UI Items
         love.graphics.setColor(1, 1, 1)

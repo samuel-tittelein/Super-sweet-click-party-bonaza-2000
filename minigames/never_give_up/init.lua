@@ -1,5 +1,6 @@
 local Minigame = {
-    name = 'never_give_up'
+    name = 'never_give_up',
+    instruction = "MINE !"
 }
 
 function Minigame:enter(difficulty)

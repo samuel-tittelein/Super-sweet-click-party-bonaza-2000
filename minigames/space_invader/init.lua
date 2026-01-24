@@ -1,7 +1,8 @@
 local SpaceInvader = {
     name = "space_invader",
     description = "Defeat the invaders!",
-    clickBonus = 50 -- Bonus clicks on win
+    clickBonus = 50, -- Bonus clicks on win
+    instruction = "TIRE !"
 }
 
 -- Game Constants

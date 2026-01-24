@@ -1,7 +1,9 @@
 -- Minijeu "Attends le cactus"
 -- Le joueur doit attendre 5 secondes sans cliquer pour gagner
 
-local Minigame = {}
+local Minigame = {
+    instruction = "ATTENDS !"
+}
 
 function Minigame:enter(difficulty)
     self.background = love.graphics.newImage("minigames/wait/assets/background.jpg")

@@ -1,5 +1,6 @@
 local TimeMatcher = {
-    name = 'time_matcher'
+    name = 'time_matcher',
+    instruction = "SYNCHRONISE !"
 }
 
 function TimeMatcher:enter(difficulty)

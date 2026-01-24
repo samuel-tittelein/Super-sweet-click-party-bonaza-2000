@@ -1,4 +1,6 @@
-local Minigame = {}
+local Minigame = {
+    instruction = "TROUVE !"
+}
 
 function Minigame:enter(difficulty)
     self.difficulty = difficulty or 1

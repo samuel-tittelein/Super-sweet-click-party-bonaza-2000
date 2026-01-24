@@ -114,6 +114,17 @@ function love.keypressed(key)
             gClickCount = gClickCount + 100000
         elseif key == 'f1' then
             gDevMode = not gDevMode
+        elseif key == 'u' then
+            -- Unlock all minigames
+            for _, mg in ipairs(G_MINIGAMES) do
+                gUnlockedMinigames[mg.id] = true
+                -- Also unlock by name just in case legacy checks exist
+                gUnlockedMinigames[mg.name] = true
+            end
+            print("DEV: All minigames unlocked!")
+        elseif key == 'w' then
+            -- Force Win State
+            gStateMachine:change('won')
         end
     end
     gStateMachine:keypressed(key)

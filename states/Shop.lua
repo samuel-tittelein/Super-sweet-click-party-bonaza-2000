@@ -43,7 +43,7 @@ function Shop:enter(params)
                 success, itemModule = pcall(require, itemPath)
             end
 
-            if success then
+            if success and itemModule.key ~= 'heart' and itemModule.key ~= 'downgrade' then
                 -- Filtering Logic for Item Unlocks
                 local themedItems = {
                     ["jeux_de_lettres"] = true,
@@ -251,7 +251,8 @@ function Shop:draw()
     love.graphics.printf("SHOP SCREEN", 0, 50, 1280, "center")
 
     love.graphics.newFont(20)
-    love.graphics.printf("Click Power: " .. gClickPower .. " | Lives: " .. gLives, 0, 120, 1280, "center")
+    love.graphics.printf("Click Power: " .. gClickPower .. " | Clicks: " .. gClickCount .. " | Lives: " .. gLives, 0, 120,
+        1280, "center")
 
     -- Draw Items
     for i, item in ipairs(self.shopItems) do

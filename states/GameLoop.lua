@@ -44,16 +44,7 @@ function GameLoop:enter(params)
     self.timer = 0
     self.resultMessage = ""
 
-    -- Load item definitions for UI
     self.itemDefs = {}
-    local itemFiles = { 'heart', 'downgrade' }
-    -- We assume they exist in items/name/init.lua now
-    for _, name in ipairs(itemFiles) do
-        local success, itemTitle = pcall(require, 'items.' .. name .. '.init')
-        if success then
-            self.itemDefs[name] = itemTitle
-        end
-    end
 
     self.fonts = {
         ui = love.graphics.newFont(30),
@@ -415,33 +406,10 @@ function GameLoop:draw()
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf(string.format("%.0f", math.ceil(self.timer)), 0, 360, 1280, "center")
 
-        -- Draw UI Items
+        -- Small countdown below
+        love.graphics.setFont(self.fonts.medium)
         love.graphics.setColor(1, 1, 1)
-        love.graphics.setFont(self.fonts.small)
-        love.graphics.print("BONUS ITEMS:", 1000, 150)
-
-        local startY = 200
-        for name, def in pairs(self.itemDefs) do
-            local count = gInventory[name] or 0
-            if count > 0 then
-                -- Draw box logic (simple)
-                love.graphics.setColor(1, 1, 1, 0.5)
-                love.graphics.rectangle("fill", 1000, startY, 200, 60)
-
-                love.graphics.setColor(1, 1, 1)
-                love.graphics.print(def.name .. " x" .. count, 1010, startY + 20)
-
-                -- Draw logic from item definition?
-                if def.draw then
-                    love.graphics.push()
-                    -- icon size?
-                    def:draw(1150, startY + 10, 1)
-                    love.graphics.pop()
-                end
-
-                startY = startY + 70
-            end
-        end
+        love.graphics.printf(string.format("%.0f", math.ceil(self.timer)), 0, 360, 1280, "center")
     elseif self.phase == 'result' then
         -- Background
         love.graphics.setColor(0.1, 0.1, 0.15, 0.95)
@@ -562,7 +530,7 @@ function GameLoop:draw()
 
                 -- Shockwave effect from dying heart?
                 if self.heartAnim.active and self.heartAnim.phase == 'explode' then
-                    local progress = 1 - (self.heartAnim.timer / 0.3)  -- faster shockwave
+                    local progress = 1 - (self.heartAnim.timer / 0.3) -- faster shockwave
                     -- Push away from the right (where the dying heart is)
                     -- The closer to the right (higher index), the more push?
                     -- Actually push everything left?
@@ -578,40 +546,34 @@ function GameLoop:draw()
                 -- Draw Heart Shape
                 love.graphics.setColor(1, 0.3, 0.3)
                 love.graphics.polygon("fill",
-                    hx + heartSize / 2, startY + heartSize, -- Bottom tip
-                    hx, startY + heartSize / 3,             -- Left middle
-                    hx + heartSize / 4, startY,             -- Left top humb
+                    hx + heartSize / 2, startY + heartSize,     -- Bottom tip
+                    hx, startY + heartSize / 3,                 -- Left middle
+                    hx + heartSize / 4, startY,                 -- Left top humb
                     hx + heartSize / 2, startY + heartSize / 4, -- Center dip
-                    hx + heartSize * 0.75, startY,          -- Right top hump
-                    hx + heartSize, startY + heartSize / 3  -- Right middle
+                    hx + heartSize * 0.75, startY,              -- Right top hump
+                    hx + heartSize, startY + heartSize / 3      -- Right middle
                 )
             end
 
             love.graphics.pop()
         end
-
-        -- Transition
-        love.graphics.setFont(self.fonts.resultSmall)
-        love.graphics.setColor(0.7, 0.7, 0.7)
-        love.graphics.printf("Prochain mini-jeu...", 0, 520, 1280, "center")
-
-        -- Bar
-        local barW, barH = 600, 10
-        local barX, barY = (1280 - barW) / 2, 560
-
-        love.graphics.setColor(0.3, 0.3, 0.3)
-        love.graphics.rectangle("fill", barX, barY, barW, barH, 5, 5)
-
-        local pct = 0
-        if self.resultDuration and self.resultDuration > 0 then
-            pct = 1 - (self.timer / self.resultDuration)
-        end
-        love.graphics.setColor(0.2, 0.6, 1.0)
-        love.graphics.rectangle("fill", barX, barY, barW * pct, barH, 5, 5)
-
-        -- Restore font default (just in case)
-        love.graphics.setFont(love.graphics.newFont(12))
     end
+    -- Global HUD Info (Score & Lives)
+    love.graphics.setFont(self.fonts.medium)
+
+    -- SCORE - Juste après "SCORE:" (qui commence autour de x=430)
+    love.graphics.setColor(1, 0.8, 0) -- Orange vif pour correspondre au style
+    love.graphics.print(tostring(gClickCount), 600, 640)
+
+    -- VIES - Entre "VIES:" et le cœur (VIES commence vers x=710)
+    love.graphics.setColor(1, 0.8, 0) -- Même orange
+    love.graphics.print(tostring(gLives), 840, 640)
+
+    -- Reset de la couleur pour le reste du rendu
+    love.graphics.setColor(1, 1, 1)
+
+    -- Reset de la couleur pour la suite
+    love.graphics.setColor(1, 1, 1)
 end
 
 function GameLoop:exit()
@@ -678,33 +640,7 @@ function GameLoop:mousepressed(x, y, button)
 
         self.currentMinigame:mousepressed(mx, my, button)
     elseif self.phase == 'intro' and button == 1 then
-        -- Check clicks on items
-        local startY = 200
-        for name, def in pairs(self.itemDefs) do
-            local count = gInventory[name] or 0
-            if count > 0 then
-                if x >= 1000 and x <= 1200 and y >= startY and y <= startY + 60 then
-                    -- Item Clicked!
-                    if name == 'heart' then
-                        if self.currentMinigame.addLife then
-                            gInventory.heart = gInventory.heart - 1
-                            self.currentMinigame:addLife()
-                            -- optional feedback in log or sound
-                        end
-                    elseif name == 'downgrade' then
-                        if self.difficulty > 1 then
-                            gInventory.downgrade = gInventory.downgrade - 1
-                            self.difficulty = self.difficulty - 1
-                            if self.currentMinigame.enter then
-                                self.currentMinigame:enter(self.difficulty)
-                            end
-                        end
-                    end
-                    return -- Handle one click
-                end
-                startY = startY + 70
-            end
-        end
+        -- Item interaction removed
     end
 end
 

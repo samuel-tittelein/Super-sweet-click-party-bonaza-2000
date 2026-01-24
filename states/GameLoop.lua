@@ -24,13 +24,12 @@ function GameLoop:enter(params)
 
     -- Load all minigames identifiers
     self.availableMinigames = {}
-    local minigameList = {'taupe', 'popup', 'stocks-timing', 'taiko', 'burger' ,'time_matcher', 'catch-stick', 'wait', 'runnerDash', 'find-different', 'cute_and_creepy' }
-    for _, name in ipairs(minigameList) do
-        local success, mg = pcall(require, 'minigames.' .. name .. '.init')
+    for _, mgData in ipairs(G_MINIGAMES) do
+        local success, mg = pcall(require, 'minigames.' .. mgData.id .. '.init')
         if success then
             table.insert(self.availableMinigames, mg)
         else
-            error("Failed to load minigame: " .. name .. "\nError: " .. tostring(mg))
+            error("Failed to load minigame: " .. mgData.id .. "\nError: " .. tostring(mg))
         end
     end
     -- Manual insertions removed in favor of list
@@ -55,6 +54,34 @@ function GameLoop:enter(params)
         end
     end
 
+    self.fonts = {
+        ui = love.graphics.newFont(30),
+        small = love.graphics.newFont(20),
+        large = love.graphics.newFont(48),
+        medium = love.graphics.newFont(32),
+        resultSmall = love.graphics.newFont(24)
+    }
+
+    self.scoreUI = {
+        scale = 1,
+        rotation = 0,
+        baseScale = 1
+    }
+    self.scoreUI = {
+        scale = 1,
+        rotation = 0,
+        baseScale = 1
+    }
+    self.lastKnownScore = gClickCount -- Track changes
+    
+    self.presentationProgress = 0 -- 0 = Windowed, 1 = Fullscreen
+    
+    self.heartAnim = {
+        active = false,
+        timer = 0,
+        phase = 'idle' -- 'tremble', 'explode'
+    }
+    
     self:nextLevel()
 end
 
@@ -107,7 +134,7 @@ function GameLoop:nextLevel()
 
     self.currentMinigame = self.availableMinigames[idx]
     self.currentMinigameIndex = idx
-    
+
     -- Safety check: if minigame is nil, use first minigame
     if not self.currentMinigame then
         if #self.availableMinigames > 0 then
@@ -133,6 +160,15 @@ function GameLoop:nextLevel()
 end
 
 function GameLoop:update(dt)
+    -- Presentation Transition
+    local targetProgress = 1
+    if self.phase == 'result' or self.phase == 'lost' then
+        targetProgress = 0
+    end
+    
+    -- Smooth lerp
+    self.presentationProgress = self.presentationProgress + (targetProgress - self.presentationProgress) * 5 * dt
+
     if self.phase == 'intro' then
         self.timer = self.timer - dt
         if self.timer <= 0 then
@@ -140,41 +176,139 @@ function GameLoop:update(dt)
         end
     elseif self.phase == 'play' then
         -- Update minigame
+
         local result = self.currentMinigame:update(dt)
 
         if result == 'won' then
             self:stopMinigame()
             self.phase = 'result'
-            self.resultMessage = "YOU WON!"
-            self.timer = 5 -- Show result for 5s (Intermission)
+            self.resultMessage = "VICTOIRE !"
+            
+            -- Base 10s, accelerates with difficulty (minimum 3s)
+            -- More aggressive scaling: -0.8s per level
+            local duration = math.max(1, 5 - ((self.difficulty - 1) * 0.8))
+            
+            self.timer = duration -- Show result for calculated duration (Intermission)
+            self.resultDuration = duration
             self.score = self.score + 1
 
             -- Add click bonus
-            local bonus = self.currentMinigame.clickBonus or 10
-            gClickCount = gClickCount + bonus
+            local bonus = self.currentMinigame.clickBonus or 100 -- Increased default for visibility
+            
+            -- Setup Score Animation
+            self.scoreStart = gClickCount -- Old score
+            self.scoreTarget = gClickCount + bonus -- New score
+            self.displayScore = self.scoreStart
+            
+            -- Update global immediately (so it's saved), but animate display
+            gClickCount = self.scoreTarget
 
             -- Record win for unlocks
             if self.currentMinigame.name then
                 gUnlockedMinigames[self.currentMinigame.name] = true
             end
 
-            -- self.difficulty = self.difficulty + 0.1 -- Removing old increment
         elseif result == 'lost' then
             self:stopMinigame()
             gLives = gLives - 1
+            
+            -- Trigger Heart Loss Animation
+            self.heartAnim.active = true
+            self.heartAnim.timer = 0.5 -- Trenble duration
+            self.heartAnim.phase = 'tremble'
+            
             if gLives <= 0 then
                 gStateMachine:change('lost', { score = self.score })
             else
                 self.phase = 'result'
-                self.resultMessage = "LIFE LOST!"
+                self.resultMessage = "VIE PERDUE..."
                 self.timer = 2 -- Short delay before next game
-                -- No score increment, no click bonus
+                self.resultDuration = 2
+
+                -- No score change
+                self.scoreStart = gClickCount
+                self.scoreTarget = gClickCount
+                self.displayScore = gClickCount
             end
         end
     elseif self.phase == 'result' then
         self.timer = self.timer - dt
+        
+        -- Score Animation
+        -- User wants it to slow down at the end and have a clear pause.
+        -- We make the animation faster than the total timer.
+        local animDuration = self.resultDuration - 3.0 -- End animation 3s before state change
+        if animDuration < 0.5 then animDuration = 0.5 end -- Safety
+        
+        local timerElapsed = self.resultDuration - self.timer
+        
+        if self.scoreTarget > self.scoreStart then
+            local progress = timerElapsed / animDuration
+            
+            -- Clamp 0-1
+            if progress < 0 then progress = 0 end
+            if progress > 1 then progress = 1 end
+            
+            -- Ease Out Cubic: 1 - (1 - x)^3
+            -- Starts fast, slows down at the end
+            local curve = 1 - math.pow(1 - progress, 3)
+            
+            self.displayScore = math.floor(self.scoreStart + (self.scoreTarget - self.scoreStart) * curve)
+        else
+            self.displayScore = self.scoreTarget
+        end
+
+         -- Score Animation Logic (During Result Counting)
+        local currentDisplayScore = self.displayScore
+        
+        -- Detect Changes
+        if currentDisplayScore > self.lastKnownScore then
+            -- Use thresholds (10, 100, 1000)
+            local crossed1000 = math.floor(self.lastKnownScore / 1000) < math.floor(currentDisplayScore / 1000)
+            local crossed100 = math.floor(self.lastKnownScore / 100) < math.floor(currentDisplayScore / 100)
+            local crossed10 = math.floor(self.lastKnownScore / 10) < math.floor(currentDisplayScore / 10)
+            
+            if crossed1000 then
+                 -- Huge Amplified Effect
+                self.scoreUI.scale = 3.0
+                self.scoreUI.rotation = math.rad(math.random(-30, 30))
+            elseif crossed100 then
+                 -- Medium Amplified Effect
+                self.scoreUI.scale = 2.0
+                self.scoreUI.rotation = math.rad(math.random(-15, 15))
+            elseif crossed10 then
+                 -- Small Effect
+                self.scoreUI.scale = 1.3
+                self.scoreUI.rotation = math.rad(math.random(-5, 5))
+            end
+            
+            self.lastKnownScore = currentDisplayScore
+        end
+        
+        -- Decay Animation
+        self.scoreUI.scale = self.scoreUI.scale + (self.scoreUI.baseScale - self.scoreUI.scale) * 5 * dt
+        self.scoreUI.rotation = self.scoreUI.rotation + (0 - self.scoreUI.rotation) * 5 * dt
+
         if self.timer <= 0 then
+
             self:nextLevel()
+        end
+        
+        -- Heart Animation Update
+        if self.heartAnim.active then
+            self.heartAnim.timer = self.heartAnim.timer - dt
+            if self.heartAnim.phase == 'tremble' then
+                if self.heartAnim.timer <= 0 then
+                    self.heartAnim.phase = 'explode'
+                    self.heartAnim.timer = 0.5 -- Explosion duration
+                    -- Play sound?
+                end
+            elseif self.heartAnim.phase == 'explode' then
+                if self.heartAnim.timer <= 0 then
+                    self.heartAnim.active = false
+                    self.heartAnim.phase = 'idle'
+                end
+            end
         end
     end
 end
@@ -200,18 +334,28 @@ function GameLoop:draw()
 
     -- Draw Minigame
     if self.currentMinigame then
-        -- Clip or just draw? Requirement said "in a rectangle at the center"
-        -- Let's define a game area, e.g. 800x600 centered
-        -- or just full screen if minigames are designed 1280x720.
-        -- User said: "have the mini games in a rectangle at the center"
+        -- Interpolate View based on presentationProgress
+        -- Windowed: 800x450, Y offset ~30
+        -- Fullscreen: 1280x720, Y offset 0
+        local p = self.presentationProgress
+        
+        local gameW = 800 + (1280 - 800) * p
+        local gameH = 450 + (720 - 450) * p
+        
+        local centerY_windowed = (720 - 450) / 2 + 30
+        local centerY_full = (720 - 720) / 2 -- 0
+        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        
+        local gameX = (1280 - gameW) / 2
+        local gameY = targetY
+        
 
-        -- Let's make the minigame area a bit smaller to show the "Game UI Template" around it
-        local gameW, gameH = 800, 450
-        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
 
         -- Draw UI Text
         love.graphics.setColor(1, 1, 1)
-        love.graphics.newFont(30)
+        love.graphics.setFont(self.fonts.ui)
+        
+        -- Standard Score in Game (No Animation)
         love.graphics.printf("Score: " .. gClickCount .. " | Lives: " .. gLives, 0, 20, 1280, "center")
 
         -- Clip and Draw Game
@@ -249,7 +393,7 @@ function GameLoop:draw()
 
         -- Draw UI Items
         love.graphics.setColor(1, 1, 1)
-        love.graphics.newFont(20)
+        love.graphics.setFont(self.fonts.small)
         love.graphics.print("BONUS ITEMS:", 1000, 150)
 
         local startY = 200
@@ -275,10 +419,174 @@ function GameLoop:draw()
             end
         end
     elseif self.phase == 'result' then
-        love.graphics.setColor(0, 0, 0, 0.7)
+        -- Background
+        love.graphics.setColor(0.1, 0.1, 0.15, 0.95)
         love.graphics.rectangle("fill", 0, 0, 1280, 720)
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.printf(self.resultMessage, 0, 300, 1280, "center")
+
+        -- Title
+        love.graphics.setFont(self.fonts.large)
+        if self.resultMessage == "VICTOIRE !" then
+            love.graphics.setColor(0.2, 0.8, 0.2)
+        else
+            love.graphics.setColor(0.9, 0.3, 0.3)
+        end
+        love.graphics.printf(self.resultMessage, 0, 120, 1280, "center")
+
+        -- Panel
+        love.graphics.setColor(0.2, 0.2, 0.25)
+        love.graphics.rectangle("fill", 340, 220, 600, 200, 15, 15)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", 340, 220, 600, 200, 15, 15)
+
+        -- Stats
+        love.graphics.setFont(self.fonts.medium)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf("Score Total", 0, 250, 1280, "center")
+        love.graphics.setColor(1, 0.9, 0.2)
+        
+        -- Draw animated score in Result Screen
+        local displayVal = self.displayScore or gClickCount
+        
+        love.graphics.push()
+        love.graphics.translate(640, 290 + 20) -- Center pivot (approx center + half height)
+        love.graphics.rotate(self.scoreUI.rotation)
+        love.graphics.scale(self.scoreUI.scale, self.scoreUI.scale)
+        
+        -- Color override if big milestone?
+        if self.scoreUI.scale > 1.5 then
+            love.graphics.setColor(1, 0.2, 0.2) -- Flash Red
+        elseif self.scoreUI.scale > 1.1 then
+            love.graphics.setColor(1, 1, 0.2) -- Flash Yellow
+        else
+            love.graphics.setColor(1, 0.9, 0.2) -- Gold
+        end
+
+        love.graphics.printf(tostring(displayVal), -640, -20, 1280, "center")
+        love.graphics.pop()
+
+        love.graphics.setColor(1, 1, 1)
+
+        love.graphics.printf("Vies Restantes", 0, 350, 1280, "center")
+        
+        -- Draw Hearts
+        local heartSize = 60 -- Increased size
+        local gap = 20
+        -- Total width includes the dying heart if animating
+        local numHeartsInfo = gLives
+        if self.heartAnim.active then numHeartsInfo = gLives + 1 end
+        
+        local totalW = (numHeartsInfo * heartSize) + ((numHeartsInfo - 1) * gap)
+        local startX = (1280 - totalW) / 2
+        local startY = 390
+        
+        love.graphics.setColor(1, 0.3, 0.3)
+        for i = 1, numHeartsInfo do
+            local hx = startX + (i-1) * (heartSize + gap)
+            local centerX = hx + heartSize / 2
+            local centerY = startY + heartSize / 2
+            
+            -- State Logic
+            local isDyingHeart = (self.heartAnim.active and i == numHeartsInfo)
+            
+            love.graphics.push()
+            love.graphics.translate(centerX, centerY)
+            
+            if isDyingHeart then
+                if self.heartAnim.phase == 'tremble' then
+                    -- Tremble
+                    local shakeAmt = 5 * (self.heartAnim.timer / 0.5) -- Decaying shake? or constant
+                    shakeAmt = 5
+                    love.graphics.translate(math.random(-shakeAmt, shakeAmt), math.random(-shakeAmt, shakeAmt))
+                    -- Also flash white?
+                     if math.floor(love.timer.getTime() * 20) % 2 == 0 then
+                        love.graphics.setColor(1, 1, 1)
+                    else
+                        love.graphics.setColor(1, 0.3, 0.3)
+                    end
+                elseif self.heartAnim.phase == 'explode' then
+                    -- Explode: Scale UP and Fade OUT
+                    local progress = 1 - (self.heartAnim.timer / 0.5)
+                    local scaleEx = 1.0 + progress * 2.0 -- 1.0 -> 3.0
+                    local alpha = 1.0 - progress
+                    
+                    love.graphics.scale(scaleEx, scaleEx)
+                    love.graphics.setColor(1, 0.3, 0.3, alpha)
+                end
+                
+                -- Draw the dying heart
+                 love.graphics.translate(-centerX, -centerY)
+                 love.graphics.polygon("fill", 
+                    hx + heartSize/2, startY + heartSize,      
+                    hx, startY + heartSize/3,                  
+                    hx + heartSize/4, startY,                  
+                    hx + heartSize/2, startY + heartSize/4,    
+                    hx + heartSize*0.75, startY,               
+                    hx + heartSize, startY + heartSize/3       
+                )
+            else
+                -- Normal Heart logic
+                -- Animation: vivid, rhythmic, synchronized
+                local time = love.timer.getTime()
+                local speed = 8 -- Faster, more rhythmic
+                
+                -- Rotation
+                local angle = math.sin(time * speed) * 0.4 
+                
+                -- Scale
+                local scale = 1.0 + math.abs(math.sin(time * speed)) * 0.25
+                
+                -- Shockwave effect from dying heart?
+                if self.heartAnim.active and self.heartAnim.phase == 'explode' then
+                     local progress = 1 - (self.heartAnim.timer / 0.3) -- faster shockwave
+                     -- Push away from the right (where the dying heart is)
+                     -- The closer to the right (higher index), the more push?
+                     -- Actually push everything left?
+                     local push = -20 * progress * (i / gLives) 
+                     love.graphics.translate(push, 0)
+                end
+
+                love.graphics.rotate(angle)
+                love.graphics.scale(scale, scale) -- Apply scale
+                
+                love.graphics.translate(-centerX, -centerY)
+                
+                -- Draw Heart Shape 
+                love.graphics.setColor(1, 0.3, 0.3)
+                love.graphics.polygon("fill", 
+                    hx + heartSize/2, startY + heartSize,      -- Bottom tip
+                    hx, startY + heartSize/3,                  -- Left middle
+                    hx + heartSize/4, startY,                  -- Left top humb
+                    hx + heartSize/2, startY + heartSize/4,    -- Center dip
+                    hx + heartSize*0.75, startY,               -- Right top hump
+                    hx + heartSize, startY + heartSize/3       -- Right middle
+                )
+            end
+            
+            love.graphics.pop()
+        end
+
+        -- Transition
+        love.graphics.setFont(self.fonts.resultSmall)
+        love.graphics.setColor(0.7, 0.7, 0.7)
+        love.graphics.printf("Prochain mini-jeu...", 0, 520, 1280, "center")
+
+        -- Bar
+        local barW, barH = 600, 10
+        local barX, barY = (1280 - barW)/2, 560
+        
+        love.graphics.setColor(0.3, 0.3, 0.3)
+        love.graphics.rectangle("fill", barX, barY, barW, barH, 5, 5)
+        
+        local pct = 0
+        if self.resultDuration and self.resultDuration > 0 then
+            pct = 1 - (self.timer / self.resultDuration)
+        end
+        love.graphics.setColor(0.2, 0.6, 1.0)
+        love.graphics.rectangle("fill", barX, barY, barW * pct, barH, 5, 5)
+        
+        -- Restore font default (just in case)
+        love.graphics.setFont(love.graphics.newFont(12))
     end
 end
 
@@ -310,9 +618,15 @@ function GameLoop:keypressed(key)
         self.phase = 'result'
         self.resultMessage = "DEV WIN"
         self.timer = 0.5
+        self.resultDuration = 0.5
         self.score = self.score + 1
         local bonus = (self.currentMinigame and self.currentMinigame.clickBonus) or 10
-        gClickCount = gClickCount + bonus
+        
+        self.scoreStart = gClickCount
+        self.scoreTarget = gClickCount + bonus
+        self.displayScore = self.scoreStart
+        
+        gClickCount = self.scoreTarget
     elseif gDevMode and key == 's' then
         -- Go to Shop
         gStateMachine:change('shop', { score = self.score, difficulty = self.difficulty })
@@ -330,8 +644,15 @@ end
 function GameLoop:mousepressed(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousepressed then
         -- Need to adjust mouse coordinates to minigame space if we are scaling/translating
-        local gameW, gameH = 800, 450
-        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        -- Recalculate current geometry (duplication of draw logic, unavoidable without refactor)
+        local p = self.presentationProgress
+        local gameW = 800 + (1280 - 800) * p
+        local centerY_windowed = (720 - 450) / 2 + 30
+        local centerY_full = 0
+        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        local gameX = (1280 - gameW) / 2
+        local gameY = targetY
+        
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -372,8 +693,13 @@ end
 function GameLoop:mousereleased(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousereleased then
         -- Coordinate transform
-        local gameW, gameH = 800, 450
-        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local p = self.presentationProgress
+        local gameW = 800 + (1280 - 800) * p
+        local centerY_windowed = (720 - 450) / 2 + 30
+        local centerY_full = 0
+        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        local gameX = (1280 - gameW) / 2
+        local gameY = targetY
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -385,8 +711,13 @@ end
 function GameLoop:mousemoved(x, y, dx, dy)
     if self.phase == 'play' and self.currentMinigame.mousemoved then
         -- Coordinate transform
-        local gameW, gameH = 800, 450
-        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
+        local p = self.presentationProgress
+        local gameW = 800 + (1280 - 800) * p
+        local centerY_windowed = (720 - 450) / 2 + 30
+        local centerY_full = 0
+        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        local gameX = (1280 - gameW) / 2
+        local gameY = targetY
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale

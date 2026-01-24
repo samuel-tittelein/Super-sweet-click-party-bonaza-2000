@@ -11,31 +11,21 @@ function MinigameSelector:enter()
         gStateMachine:change('menu')
     end))
 
-    local rows = 5
-    local cols = 3
-    local btnW, btnH = 180, 75
-    local startX = 280
+    local rows = 4
+    local cols = 4
+    local btnW, btnH = 200, 60
+    local startX = 200
     local startY = 220
     local padding = 15
 
-    local gameNames = {'Taupe', 'Popup', 'Stocks', 'Taiko', 'Burger', 'Time Matcher', 'Stick Catch', 'Wait (Cactus)', 'Runner Dash', 'Find Treasure', 'Cute & Creepy' }
-    for i = 1, #gameNames do
+    for i, game in ipairs(G_MINIGAMES) do
         local r = math.floor((i - 1) / cols)
         local c = (i - 1) % cols
 
         local x = startX + c * (btnW + padding)
         local y = startY + r * (btnH + padding)
 
-        local name = gameNames[i] or ("Game " .. i)
-        table.insert(self.buttons, Button.new(name, x, y, btnW, btnH, function()
-            gStateMachine:change('game', { mode = 'single', gameIndex = i })
-            -- For specific testing, maybe launch just that game repeatedly?
-            -- Or launch GameLoop forcing that game?
-            -- User said "return to the mini game selection after the mini game is done"
-
-            -- We need a way to launch a SPECIFIC game in GameLoop and then callback.
-            -- Or better, have GameLoop handle a 'single' mode.
-
+        table.insert(self.buttons, Button.new(game.name, x, y, btnW, btnH, function()
             gStateMachine:change('game', { mode = 'single', gameIndex = i, difficulty = self.selectedLevel })
         end))
     end

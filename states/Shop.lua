@@ -3,10 +3,26 @@ local Button = require 'utils.Button'
 local Shop = {}
 
 function Shop:enter(params)
+    params = params or {}
     self.score = params.score or 0
     self.difficulty = params.difficulty or 1
     self.buttons = {}
     self.shopItems = {}
+
+    -- Load Background Images
+    -- Using safe loading or pcall to avoid crash if missing
+    local function load(path) return love.graphics.newImage(path) end
+    self.bgAccueil = load('states/shop_accueil.jpg')
+    self.bgChoix1 = load('states/shope_choix1.jpg') 
+    self.bgChoix2 = load('states/shop_choix2.jpg')
+    self.bgChoix3 = load('states/shop_choix3.jpg')
+    
+    self.currentBg = self.bgAccueil
+
+    -- Back Button
+    table.insert(self.buttons, Button.new("Back", 10, 10, 100, 40, function()
+        gStateMachine:change('selector') -- Go back to selector for testing
+    end))
 
     -- Scan for items
     local itemsDir = "items"
@@ -50,6 +66,8 @@ function Shop:enter(params)
                     if file == "maitre_du_temps" and gUnlockedMinigames["time_matcher"] then
                         isLocked = false
                     elseif file == "melodie_a_l_infini" and gUnlockedMinigames["taiko"] then
+                        isLocked = false
+                    elseif file == "jeux_de_lettres" and gUnlockedMinigames["letterbox"] then
                         isLocked = false
                     end
                 end
@@ -134,6 +152,11 @@ function Shop:buyItem(item, index)
         table.insert(self.buttons, Button.new("Continue", 1280 / 2 - 100, 600, 200, 50, function()
             gStateMachine:change('game', { score = self.score, difficulty = self.difficulty, continue = true })
         end))
+        
+        -- Re-add back button
+        table.insert(self.buttons, Button.new("Back", 10, 10, 100, 40, function()
+            gStateMachine:change('selector')
+        end))
 
         -- Re-add buy buttons
         for i, shopItem in ipairs(self.shopItems) do
@@ -155,10 +178,52 @@ function Shop:buyItem(item, index)
 end
 
 function Shop:update(dt)
+    -- Scaling logic reverse to get virtual coordinates
+    local mx, my = love.mouse.getPosition()
+    local vx = (mx - gTransX) / gScale
+    local vy = (my - gTransY) / gScale
+
+    -- Define Zones
+    -- Left: < 1280/3 approx 426
+    -- Center: 426 - 853
+    -- Right: > 853
+    
+    -- Refined with 3 squares logic for testing as requested
+    -- Let's say squares are roughly the size of the item display areas:
+    -- Item 1: X=200, W=200 -> Range 200-400
+    -- Item 2: X=550, W=200 -> Range 550-750 
+    -- Item 3: X=900, W=200 -> Range 900-1100
+    
+    -- User said "zone we can say squares, for testing... hover left square... center... right"
+    -- I'll implement simple vertical screen thirds for broader detection or specific squares if implied.
+    -- "if on survole l item le plus à gauche" -> hovering the item.
+    
+    local inLeft = (vx >= 200 and vx <= 400 and vy >= 200 and vy <= 450)
+    local inCenter = (vx >= 550 and vx <= 750 and vy >= 200 and vy <= 450)
+    local inRight = (vx >= 900 and vx <= 1100 and vy >= 200 and vy <= 450)
+    
+    if inLeft then
+        self.currentBg = self.bgChoix1
+    elseif inCenter then
+        self.currentBg = self.bgChoix2
+    elseif inRight then
+        self.currentBg = self.bgChoix3
+    else
+        self.currentBg = self.bgAccueil
+    end
 end
 
 function Shop:draw()
-    love.graphics.clear(0.2, 0.1, 0.2)
+    love.graphics.clear(0, 0, 0)
+    
+    -- Draw Background
+    if self.currentBg then
+        local sx = 1280 / self.currentBg:getWidth()
+        local sy = 720 / self.currentBg:getHeight()
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(self.currentBg, 0, 0, 0, sx, sy)
+    end
+
     love.graphics.setColor(1, 1, 1)
     love.graphics.newFont(40)
     love.graphics.printf("SHOP SCREEN", 0, 50, 1280, "center")
@@ -171,8 +236,9 @@ function Shop:draw()
         local x = 200 + (i - 1) * 350
         local y = 200
 
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.rectangle("line", x, y, 200, 250)
+        -- Draw item box/highlight?
+        -- love.graphics.setColor(1, 1, 1)
+        -- love.graphics.rectangle("line", x, y, 200, 250)
 
         love.graphics.printf(item.name, x, y + 10, 200, "center")
 

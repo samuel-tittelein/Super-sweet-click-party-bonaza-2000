@@ -12,6 +12,24 @@ gGameLost = false
 gDevMode = true
 gLives = 3
 gUnlockedMinigames = {} -- Track beats for item unlocks
+G_MINIGAMES = {
+    { id = 'taupe',           name = 'Taupe' },
+    { id = 'popup',           name = 'Popup' },
+    { id = 'stocks-timing',   name = 'Stocks' },
+    { id = 'taiko',           name = 'Taiko' },
+    { id = 'burger',          name = 'Burger' },
+    { id = 'time_matcher',    name = 'Time Matcher' },
+    { id = 'catch-stick',     name = 'Stick Catch' },
+    { id = 'wait',            name = 'Wait' },
+    { id = 'runnerDash',      name = 'Runner Dash' },
+    { id = 'find-different',  name = 'Find Different' },
+    { id = 'cute_and_creepy', name = 'Cute and Creepy' },
+    { id = 'letterbox',       name = 'Letterbox' },
+    { id = 'zombie-shooter',  name = 'Zombie Shooter' }
+    { id = 'letterbox',       name = 'Letterbox' },
+    { id = 'never_give_up',   name = 'Never Give Up' },
+    { id = 'space_invader',   name = 'Space Invader' }
+}
 
 -- Base resolution
 VIRTUAL_WIDTH = 1280

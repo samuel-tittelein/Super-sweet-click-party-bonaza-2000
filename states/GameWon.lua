@@ -48,6 +48,7 @@ local CREDITS_TEXT = {
     "LOVE2D",
     "",
     "--- REMERCIEMENTS ---",
+    "A Romain Wallon, le meilleur coach de tout les temps!",
     "A toute l'equipe Game Jam !",
     "Et a VOUS pour vos clics !",
     "",
@@ -132,8 +133,7 @@ function GameWon:finishCredits()
     -- Create Button
     local w, h = 1280, 720
     table.insert(self.buttons, Button.new("Retour Accueil", w / 2 - 150, h - 150, 300, 60, function()
-        -- Reset font to default to avoid breaking other menus
-        love.graphics.setFont(love.graphics.newFont(12))
+        -- Reset game and change to menu
         gResetGame()
         gStateMachine:change('menu')
     end))

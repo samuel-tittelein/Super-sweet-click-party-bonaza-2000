@@ -10,14 +10,14 @@ function Minigame:enter(difficulty)
 
     -- Color Definitions (8 total for max mailbox count)
     self.colors = {
-        { name = "RED",     rgb = { 1, 0, 0 } },
-        { name = "GREEN",   rgb = { 0, 1, 0 } },
-        { name = "BLUE",    rgb = { 0, 0, 1 } },
-        { name = "YELLOW",  rgb = { 1, 1, 0 } },
+        { name = "ROUGE",   rgb = { 1, 0, 0 } },
+        { name = "VERT",    rgb = { 0, 1, 0 } },
+        { name = "BLEU",    rgb = { 0, 0, 1 } },
+        { name = "JAUNE",   rgb = { 1, 1, 0 } },
         { name = "MAGENTA", rgb = { 1, 0, 1 } },
         { name = "CYAN",    rgb = { 0, 1, 1 } },
         { name = "ORANGE",  rgb = { 1, 0.5, 0 } },
-        { name = "WHITE",   rgb = { 1, 1, 1 } }
+        { name = "BLANC",   rgb = { 1, 1, 1 } }
     }
 
     -- Difficulty Settings
@@ -147,8 +147,8 @@ function Minigame:draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(self.font24)
     local displayRound = math.min(self.round, self.totalRounds)
-    love.graphics.printf("Letterbox: Round " .. displayRound .. "/" .. self.totalRounds, 0, 40, 1280, "center")
-    love.graphics.printf(string.format("Time: %.1f", self.timer), 0, 70, 1280, "center")
+    love.graphics.printf("Boîte aux lettres : Manche " .. displayRound .. "/" .. self.totalRounds, 0, 40, 1280, "center")
+    love.graphics.printf(string.format("Temps : %.1f", self.timer), 0, 70, 1280, "center")
 
     -- Draw Color Boxes (Using tinted sprites)
     for i, box in ipairs(self.boxes) do

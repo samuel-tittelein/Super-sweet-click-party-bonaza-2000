@@ -58,7 +58,7 @@ function SpaceInvader:enter(difficulty)
     -- Use 1280x720 as internal resolution to match GameLoop scaling
     self.width = 1280
     self.height = 720
-    self.timer = 10 -- 10 seconds limit
+    self.timer = 20 -- 20 seconds limit
     
     -- Player state
     self.playerX = self.width / 2

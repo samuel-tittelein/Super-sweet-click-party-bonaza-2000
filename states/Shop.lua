@@ -16,7 +16,7 @@ function Shop:enter(params)
     self.bgChoix1 = load('states/assets/shope_choix1.jpg')
     self.bgChoix2 = load('states/assets/shop_choix2.jpg')
     self.bgChoix3 = load('states/assets/shop_choix3.jpg')
-    
+
     self.currentBg = self.bgAccueil
 
     -- Back Button
@@ -62,13 +62,35 @@ function Shop:enter(params)
                 if themedItems[file] then
                     isLocked = true -- All themed items locked by default
 
-                    -- Specific Unlock Conditions
-                    if file == "maitre_du_temps" and gUnlockedMinigames["time_matcher"] then
-                        isLocked = false
-                    elseif file == "melodie_a_l_infini" and gUnlockedMinigames["taiko"] then
-                        isLocked = false
-                    elseif file == "jeux_de_lettres" and gUnlockedMinigames["letterbox"] then
-                        isLocked = false
+                    -- Specific Unlock Conditions based on user request
+                    -- Mapping: Item -> Game ID required
+                    local unlockMap = {
+                        ["jeux_de_lettres"] = "letterbox",
+                        ["informatique_et_etoile"] = "space_invader",
+                        ["balade_dans_les_bois"] = "catch-stick",
+                        ["cute_and_creepy"] = "cute_and_creepy",
+                        ["chasse_aux_tresors"] = "find-different",
+                        ["merveilles_des_profondeurs"] = "never_give_up",
+                        ["maitre_du_temps"] = "time_matcher",
+                        ["legende_etheree"] = "zombie-shooter",
+                        ["melodie_a_l_infini"] = "taiko"
+                    }
+
+                    if file == "fete_des_clics" then
+                        -- Unlocked when all non-special games are finished at least once
+                        local nonSpecialGames = { "burger", "popup", "runnerDash", "stocks-timing", "taupe", "wait" }
+                        local allFinished = true
+                        for _, gameId in ipairs(nonSpecialGames) do
+                            if not gUnlockedMinigames[gameId] then
+                                allFinished = false
+                                break
+                            end
+                        end
+                        if allFinished then isLocked = false end
+                    elseif unlockMap[file] then
+                        if gUnlockedMinigames[unlockMap[file]] then
+                            isLocked = false
+                        end
                     end
                 end
 
@@ -152,7 +174,7 @@ function Shop:buyItem(item, index)
         table.insert(self.buttons, Button.new("Continue", 1280 / 2 - 100, 600, 200, 50, function()
             gStateMachine:change('game', { score = self.score, difficulty = self.difficulty, continue = true })
         end))
-        
+
         -- Re-add back button
         table.insert(self.buttons, Button.new("Back", 10, 10, 100, 40, function()
             gStateMachine:change('selector')
@@ -187,21 +209,21 @@ function Shop:update(dt)
     -- Left: < 1280/3 approx 426
     -- Center: 426 - 853
     -- Right: > 853
-    
+
     -- Refined with 3 squares logic for testing as requested
     -- Let's say squares are roughly the size of the item display areas:
     -- Item 1: X=200, W=200 -> Range 200-400
-    -- Item 2: X=550, W=200 -> Range 550-750 
+    -- Item 2: X=550, W=200 -> Range 550-750
     -- Item 3: X=900, W=200 -> Range 900-1100
-    
+
     -- User said "zone we can say squares, for testing... hover left square... center... right"
     -- I'll implement simple vertical screen thirds for broader detection or specific squares if implied.
     -- "if on survole l item le plus à gauche" -> hovering the item.
-    
+
     local inLeft = (vx >= 200 and vx <= 400 and vy >= 200 and vy <= 450)
     local inCenter = (vx >= 550 and vx <= 750 and vy >= 200 and vy <= 450)
     local inRight = (vx >= 900 and vx <= 1100 and vy >= 200 and vy <= 450)
-    
+
     if inLeft then
         self.currentBg = self.bgChoix1
     elseif inCenter then
@@ -215,7 +237,7 @@ end
 
 function Shop:draw()
     love.graphics.clear(0, 0, 0)
-    
+
     -- Draw Background
     if self.currentBg then
         local sx = 1280 / self.currentBg:getWidth()

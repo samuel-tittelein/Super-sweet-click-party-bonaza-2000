@@ -1,52 +1,79 @@
 local Button = require 'utils.Button'
+local Background = require 'renderers.background'
+local Scenery = require 'renderers.scenery'
+local Speakers = require 'renderers.speakers'
+local MenuUI = require 'renderers.menu_ui'
 local MainMenu = {}
 
 function MainMenu:enter()
-    self.buttons = {}
     local w, h = 1280, 720
-
-    -- Start Button
-    table.insert(self.buttons, Button.new("Start Game", w / 2 - 100, h / 2 - 50, 200, 50, function()
-        gResetGame()
-        gStateMachine:change('game')
-    end))
-
-    -- Selector Button
-    table.insert(self.buttons, Button.new("Minigames", w / 2 - 100, h / 2 + 10, 200, 50, function()
-        gResetGame()
-        gStateMachine:change('selector')
-    end))
-
-    -- Settings Button
-    table.insert(self.buttons, Button.new("Settings", w / 2 - 100, h / 2 + 70, 200, 50, function()
-        gStateMachine:push('settings')
-    end))
-
-    -- Quit Button
-    table.insert(self.buttons, Button.new("Quit", w / 2 - 100, h / 2 + 130, 200, 50, function()
-        love.event.quit()
-    end))
+    self.time = 0
+    
+    -- Init visualizer bars in scenery
+    Scenery.init(w, h)
+    -- Preload speaker assets
+    Speakers.load()
 end
 
 function MainMenu:update(dt)
+    self.time = self.time + dt
+    -- Animate visualizer bars
+    Scenery.update(dt)
+    -- Animate speakers bass pulse
+    Speakers.update(dt)
 end
 
+-- Background with dotted paper texture
+-- Delegated renderers live in renderers/*
+
+-- Speakers are drawn by renderers.speakers
+
+-- Buttons are drawn by renderers.menu_ui
+
 function MainMenu:draw()
-    love.graphics.setColor(0.1, 0.1, 0.1) -- Dark bg
-    love.graphics.rectangle("fill", 0, 0, 1280, 720)
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.newFont(40)
-    love.graphics.printf("WARIO-LIKE JAM", 0, 100, 1280, "center")
-
-    for _, btn in ipairs(self.buttons) do
-        btn:draw()
-    end
+    local w, h = 1280, 720
+    
+    Background.drawBase(w, h)
+    Scenery.draw(w, h)
+    Background.drawGarlands(w, h)
+    
+    -- Enlarge boxes further and center the pair with a small gap
+    local boxW, boxH, gap = 380, 480, 80
+    local leftX = (w * 0.5) - (gap * 0.5) - boxW - 100
+    local rightX = (w * 0.5) + (gap * 0.5) + 100
+    local y = 190
+    Speakers.draw(leftX, y, boxW, boxH, false)
+    Speakers.draw(rightX, y, boxW, boxH, true)
+    
+    local rects = MenuUI.draw(w, h, self.time)
+    self.btn1, self.btn2, self.btn3, self.btnSettings = rects.btn1, rects.btn2, rects.btn3, rects.btnSettings
 end
 
 function MainMenu:mousepressed(x, y, button)
-    for _, btn in ipairs(self.buttons) do
-        btn:clicked(x, y)
+    -- Check button 1: "NE ME CLIQUE PAS" (Start Game)
+    if self.btn1 and x >= self.btn1.x and x <= self.btn1.x + self.btn1.w and 
+       y >= self.btn1.y and y <= self.btn1.y + self.btn1.h then
+        gClickCount = gClickCount + 1
+        gStateMachine:change('game')
+    end
+    
+    -- Check button 2: "CLIQUE MOI FORT" (Minigames)
+    if self.btn2 and x >= self.btn2.x and x <= self.btn2.x + self.btn2.w and 
+       y >= self.btn2.y and y <= self.btn2.y + self.btn2.h then
+        gClickCount = 0
+        gStateMachine:change('selector')
+    end
+    
+    -- Check button 3: "NE ME CLIQUE SURTOUT PAS" (Quit)
+    if self.btn3 and x >= self.btn3.x and x <= self.btn3.x + self.btn3.w and 
+       y >= self.btn3.y and y <= self.btn3.y + self.btn3.h then
+        love.event.quit()
+    end
+    
+    -- Check settings button
+    if self.btnSettings and x >= self.btnSettings.x and x <= self.btnSettings.x + self.btnSettings.w and 
+       y >= self.btnSettings.y and y <= self.btnSettings.y + self.btnSettings.h then
+        gStateMachine:push('settings')
     end
 end
 

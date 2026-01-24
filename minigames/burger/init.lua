@@ -117,7 +117,6 @@ function Minigame:enter(difficulty)
     -- Play background music
     if self.bgMusic then
         self.bgMusic:setLooping(true)
-        print("AUDIO: Playing burger bgMusic")
         self.bgMusic:play()
     end
 end
@@ -203,6 +202,7 @@ function Minigame:draw()
         love.graphics.setColor(1, 1, 1)
         love.graphics.rectangle("fill", btn.x, btn.y, btn.w, btn.h)
         love.graphics.setColor(0, 0, 0)
+        love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", btn.x, btn.y, btn.w, btn.h)
 
         -- Draw Image Centered in Button
@@ -348,7 +348,6 @@ function Minigame:addIngredient(ingredient)
              self.won = true
              if self.bgMusic then self.bgMusic:stop() end
              if self.soundHappy then 
-                print("AUDIO: Playing happy sound")
                 self.soundHappy:play() 
              end
              self.endTimer = 1.5 -- Show win screen for 1.5 seconds

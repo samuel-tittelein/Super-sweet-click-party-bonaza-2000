@@ -1,7 +1,14 @@
 -- states/GameLoop.lua
 local GameLoop = {}
 
+-- Shared HUD background for all minigames
+local HUD_IMAGE = nil
+
 function GameLoop:enter(params)
+        -- Lazy-load HUD background image used for all minigames
+        if not HUD_IMAGE then
+            HUD_IMAGE = love.graphics.newImage('assets/hud.png')
+        end
     params = params or {}
     self.score = params.score or 0
     self.difficulty = params.difficulty or 1
@@ -347,57 +354,36 @@ function GameLoop:stopMinigame()
 end
 
 function GameLoop:draw()
-    -- Draw black background for UI template logic
-    love.graphics.clear(0, 0, 0)
+    -- Draw HUD background over the full virtual area (no clipping)
+    if HUD_IMAGE then
+        local iw, ih = HUD_IMAGE:getWidth(), HUD_IMAGE:getHeight()
+        local sx, sy = 1280 / iw, 720 / ih
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(HUD_IMAGE, 0, 0, 0, sx, sy)
+    end
 
-    -- Draw Minigame
+    -- Draw Minigame inside the arcade cabinet screen
     if self.currentMinigame then
-        -- Interpolate View based on presentationProgress
-        -- Windowed: 800x450, Y offset ~30
-        -- Fullscreen: 1280x720, Y offset 0
-        local p = self.presentationProgress
-        
-        local gameW = 800 + (1280 - 800) * p
-        local gameH = 450 + (720 - 450) * p
-        
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = (720 - 720) / 2 -- 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
-        
-        local gameX = (1280 - gameW) / 2
-        local gameY = targetY
-        
-
-
-        -- Draw UI Text
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setFont(self.fonts.ui)
-        
-        -- Standard Score in Game (No Animation)
-        love.graphics.printf("Score: " .. gClickCount .. " | Lives: " .. gLives, 0, 20, 1280, "center")
+        -- Arcade cabinet screen area (sized for the screen inside hud.png)
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
 
         -- Clip and Draw Game
         love.graphics.setScissor(gTransX + (gameX * gScale), gTransY + (gameY * gScale), gameW * gScale, gameH * gScale)
 
         love.graphics.push()
         love.graphics.translate(gameX, gameY)
-        -- If minigames are built for 1280x720, we might need to scale them down
-        -- Or just let them draw. The generic minigames use 'printf' centered at 1280.
-        -- To make them fit, let's scale them.
+        
+        -- Scale minigame to fit the screen area
         local mgScale = gameW / 1280
         love.graphics.scale(mgScale, mgScale)
 
-        love.graphics.push("all") -- Protect global state (fonts, line width, etc.)
+        love.graphics.push("all") -- Protect global state
         self.currentMinigame:draw()
         love.graphics.pop()
 
         love.graphics.pop()
         love.graphics.setScissor()
-
-        -- Draw Border around game
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", gameX, gameY, gameW, gameH)
     end
 
     -- Draw Phase Overlays
@@ -661,16 +647,10 @@ end
 
 function GameLoop:mousepressed(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousepressed then
-        -- Need to adjust mouse coordinates to minigame space if we are scaling/translating
-        -- Recalculate current geometry (duplication of draw logic, unavoidable without refactor)
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
-        
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -710,14 +690,10 @@ end
 
 function GameLoop:mousereleased(x, y, button)
     if self.phase == 'play' and self.currentMinigame.mousereleased then
-        -- Coordinate transform
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale
@@ -728,14 +704,10 @@ end
 
 function GameLoop:mousemoved(x, y, dx, dy)
     if self.phase == 'play' and self.currentMinigame.mousemoved then
-        -- Coordinate transform
-        local p = self.presentationProgress
-        local gameW = 800 + (1280 - 800) * p
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
+        -- Use fixed arcade screen dimensions (same as draw)
+        local gameW, gameH = 800, 450
         local gameX = (1280 - gameW) / 2
-        local gameY = targetY
+        local gameY = (720 - gameH) / 2 + 30
         local mgScale = gameW / 1280
 
         local mx = (x - gameX) / mgScale

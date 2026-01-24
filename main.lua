@@ -11,7 +11,9 @@ gInventory = { heart = 100, downgrade = 100 } -- Unlimited items for testing
 gGameLost = false
 gDevMode = true
 gLives = 3
-gUnlockedMinigames = {} -- Track beats for item unlocks
+gVolume = 1.0
+gDisplayMode = 'windowed' -- 'windowed', 'fullscreen', 'borderless'
+gUnlockedMinigames = {}   -- Track beats for item unlocks
 G_MINIGAMES = {
     { id = 'taupe',           name = 'Taupe' },
     { id = 'popup',           name = 'Popup' },
@@ -23,7 +25,12 @@ G_MINIGAMES = {
     { id = 'wait',            name = 'Wait' },
     { id = 'runnerDash',      name = 'Runner Dash' },
     { id = 'find-different',  name = 'Find Different' },
-    { id = 'cute_and_creepy', name = 'Cute and Creepy' }
+    { id = 'cute_and_creepy', name = 'Cute and Creepy' },
+    { id = 'letterbox',       name = 'Letterbox' },
+    { id = 'zombie-shooter',  name = 'Zombie Shooter' },
+    { id = 'letterbox',       name = 'Letterbox' },
+    { id = 'never_give_up',   name = 'Never Give Up' },
+    { id = 'space_invader',   name = 'Space Invader' }
 }
 
 -- Base resolution
@@ -36,8 +43,7 @@ gTransX = 0
 gTransY = 0
 
 function love.load()
-    love.audio.setVolume(1.0)
-    print("AUDIO: Volume set to 1.0")
+    gApplySettings()
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
     -- Load states
@@ -48,7 +54,8 @@ function love.load()
         ['selector'] = require 'states.MinigameSelector',
         ['pause'] = require 'states.PauseMenu',
         ['lost'] = require 'states.GameLost',
-        ['won'] = require 'states.GameWon'
+        ['won'] = require 'states.GameWon',
+        ['settings'] = require 'states.SettingsMenu'
     }
 
     gStateMachine = StateMachine.new(states)
@@ -166,5 +173,19 @@ function gResetGame()
             local itemPath = itemsDir .. "." .. file .. ".data"
             package.loaded[itemPath] = nil
         end
+    end
+end
+
+function gApplySettings()
+    -- Apply Volume
+    love.audio.setVolume(gVolume)
+
+    -- Apply Display Mode
+    if gDisplayMode == 'fullscreen' then
+        love.window.setFullscreen(true, "exclusive")
+    elseif gDisplayMode == 'borderless' then
+        love.window.setFullscreen(true, "desktop")
+    else
+        love.window.setFullscreen(false)
     end
 end

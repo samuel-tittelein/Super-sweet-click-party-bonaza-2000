@@ -1,0 +1,21 @@
+# boon configuration
+name = "gamejam"
+version = "1.0.0"
+love_version = "11.5"
+
+[build]
+# Files to include in the .love file
+include = [
+    "main.lua",
+    "conf.lua",
+    "assets/**/*",
+    "minigames/**/*",
+    "states/**/*",
+    "utils/**/*",
+    "items/**/*"
+]
+
+[targets]
+windows = ["x86_64"]
+linux = ["x86_64"]
+macos = ["x86_64"]

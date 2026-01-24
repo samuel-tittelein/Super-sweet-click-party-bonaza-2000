@@ -12,13 +12,18 @@ function MainMenu:enter()
     end))
 
     -- Selector Button
-    table.insert(self.buttons, Button.new("Minigames", w / 2 - 100, h / 2 + 20, 200, 50, function()
+    table.insert(self.buttons, Button.new("Minigames", w / 2 - 100, h / 2 + 10, 200, 50, function()
         gResetGame()
         gStateMachine:change('selector')
     end))
 
+    -- Settings Button
+    table.insert(self.buttons, Button.new("Settings", w / 2 - 100, h / 2 + 70, 200, 50, function()
+        gStateMachine:push('settings')
+    end))
+
     -- Quit Button
-    table.insert(self.buttons, Button.new("Quit", w / 2 - 100, h / 2 + 90, 200, 50, function()
+    table.insert(self.buttons, Button.new("Quit", w / 2 - 100, h / 2 + 130, 200, 50, function()
         love.event.quit()
     end))
 end

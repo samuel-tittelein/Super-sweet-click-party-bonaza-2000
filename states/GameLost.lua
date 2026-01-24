@@ -6,6 +6,8 @@ function GameLost:enter(params)
     self.score = params.score or 0
     gGameLost = true
     self.buttons = {}
+    self.font50 = love.graphics.newFont(50)
+    self.font30 = love.graphics.newFont(30)
     local w, h = 1280, 720
 
     table.insert(self.buttons, Button.new("Try Again", w / 2 - 100, h / 2 + 50, 200, 50, function()
@@ -23,10 +25,10 @@ function GameLost:draw()
     love.graphics.clear(0.3, 0, 0)
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.newFont(50)
+    love.graphics.setFont(self.font50)
     love.graphics.printf("GAME OVER", 0, 200, 1280, "center")
 
-    love.graphics.newFont(30)
+    love.graphics.setFont(self.font30)
     love.graphics.printf("Score (Clicks): " .. gClickCount, 0, 300, 1280, "center")
 
     for _, btn in ipairs(self.buttons) do

@@ -23,6 +23,8 @@ function Minigame:enter(difficulty)
     if love.filesystem.getInfo("minigames/never_give_up/assets/pickaxe.ogg") then
         self.clickSound = love.audio.newSource("minigames/never_give_up/assets/pickaxe.ogg", "static")
     end
+    self.font40 = love.graphics.newFont(40)
+    self.font24 = love.graphics.newFont(24)
 end
 
 function Minigame:update(dt)
@@ -133,19 +135,19 @@ function Minigame:draw()
 
     -- UI
     love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(love.graphics.newFont(40))
+    love.graphics.setFont(self.font40)
     if isGivingUp then
-        love.graphics.printf("you gave up...", 0, 50, 1280, "center")
+        love.graphics.printf("tu as abandonné...", 0, 50, 1280, "center")
     else
-        love.graphics.printf("NEVER GIVE UP!", 0, 50, 1280, "center")
+        love.graphics.printf("N'ABANDONNE JAMAIS !", 0, 50, 1280, "center")
     end
 
-    love.graphics.setFont(love.graphics.newFont(24))
-    love.graphics.printf(string.format("Time: %.1f", math.max(0, self.timer)), 0, 100, 1280, "center")
+    love.graphics.setFont(self.font24)
+    love.graphics.printf(string.format("Temps restant: %.1f", math.max(0, self.timer)), 0, 100, 1280, "center")
 
     -- Instruction
     if self.difficulty < 3 and not isGivingUp then
-        love.graphics.printf("LEFT CLICK TO DIG!", 0, 600, 1280, "center")
+        love.graphics.printf("CLIC GAUCHE POUR CREUSER !", 0, 600, 1280, "center")
     end
 end
 

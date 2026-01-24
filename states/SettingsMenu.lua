@@ -6,6 +6,8 @@ local SettingsMenu = {}
 function SettingsMenu:enter(params)
     self.buttons = {}
     self.components = {}
+    self.font40 = love.graphics.newFont(40)
+    self.font24 = love.graphics.newFont(24)
     local w, h = 1280, 720
 
     -- Volume Slider
@@ -17,9 +19,9 @@ function SettingsMenu:enter(params)
 
     -- Display Mode Dropdown
     local options = {
-        { id = 'windowed',   label = 'Windowed' },
-        { id = 'fullscreen', label = 'Fullscreen (Stretches)' },
-        { id = 'borderless', label = 'Borderless' }
+        { id = 'windowed',   label = 'Fenêtré' },
+        { id = 'fullscreen', label = 'Plein Écran (Étiré)' },
+        { id = 'borderless', label = 'Plein Écran sans Bordure' }
     }
     local currentIdx = 1
     for i, opt in ipairs(options) do
@@ -33,7 +35,7 @@ function SettingsMenu:enter(params)
     table.insert(self.components, self.displayDropdown)
 
     -- Back Button
-    table.insert(self.buttons, Button.new("Back", w / 2 - 100, h - 100, 200, 50, function()
+    table.insert(self.buttons, Button.new("Retour", w / 2 - 100, h - 100, 200, 50, function()
         gStateMachine:pop()
     end))
 end
@@ -46,12 +48,12 @@ function SettingsMenu:draw()
     love.graphics.rectangle("fill", 0, 0, 1280, 720)
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(love.graphics.newFont(40))
-    love.graphics.printf("SETTINGS", 0, 100, 1280, "center")
+    love.graphics.setFont(self.font40)
+    love.graphics.printf("PARAMÈTRES", 0, 100, 1280, "center")
 
-    love.graphics.setFont(love.graphics.newFont(24))
-    love.graphics.printf("Global Volume", 0, 210, 1280, "center")
-    love.graphics.printf("Display Mode", 0, 340, 1280, "center")
+    love.graphics.setFont(self.font24)
+    love.graphics.printf("Volume Global", 0, 210, 1280, "center")
+    love.graphics.printf("Mode d'Affichage", 0, 340, 1280, "center")
 
     -- Order matters for dropdown (draw last to be on top)
     for _, btn in ipairs(self.buttons) do

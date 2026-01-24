@@ -8,6 +8,8 @@ function Shop:enter(params)
     self.difficulty = params.difficulty or 1
     self.buttons = {}
     self.shopItems = {}
+    self.font40 = love.graphics.newFont(40)
+    self.font20 = love.graphics.newFont(20)
 
     -- Load Background Images
     -- Using safe loading or pcall to avoid crash if missing
@@ -247,10 +249,10 @@ function Shop:draw()
     end
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.newFont(40)
+    love.graphics.setFont(self.font40)
     love.graphics.printf("SHOP SCREEN", 0, 50, 1280, "center")
 
-    love.graphics.newFont(20)
+    love.graphics.setFont(self.font20)
     love.graphics.printf("Click Power: " .. gClickPower .. " | Clicks: " .. gClickCount .. " | Lives: " .. gLives, 0, 120,
         1280, "center")
 

@@ -82,19 +82,23 @@ function GameLoop:enter(params)
         phase = 'idle' -- 'tremble', 'explode'
     }
     
-    -- Load Intermission Sound
-    self.sndIntermission = {}
+    -- Load Audio
+    self.sndWin = {}
     if love.filesystem.getInfo("states/assets/bouclewin1.ogg") then
-        table.insert(self.sndIntermission, love.audio.newSource("states/assets/bouclewin1.ogg", "static"))
+        table.insert(self.sndWin, love.audio.newSource("states/assets/bouclewin1.ogg", "static"))
     end
     if love.filesystem.getInfo("states/assets/bouclewin2.ogg") then
-        table.insert(self.sndIntermission, love.audio.newSource("states/assets/bouclewin2.ogg", "static"))
+        table.insert(self.sndWin, love.audio.newSource("states/assets/bouclewin2.ogg", "static"))
     end
-     if love.filesystem.getInfo("states/assets/perduvie.ogg") then
-        table.insert(self.sndIntermission, love.audio.newSource("states/assets/perduvie.ogg", "static"))
+    
+    self.sndLoseLife = nil
+    if love.filesystem.getInfo("states/assets/perduvie.ogg") then
+        self.sndLoseLife = love.audio.newSource("states/assets/perduvie.ogg", "static")
     end
+    
+    self.sndGameOver = nil
     if love.filesystem.getInfo("states/assets/perdufin.ogg") then
-        table.insert(self.sndIntermission, love.audio.newSource("states/assets/perdufin.ogg", "static"))
+        self.sndGameOver = love.audio.newSource("states/assets/perdufin.ogg", "static")
     end
     
     self:nextLevel()
@@ -198,9 +202,9 @@ function GameLoop:update(dt)
             self:stopMinigame()
             self.phase = 'result'
             
-            -- Play Intermission Sound
-            if #self.sndIntermission > 0 then 
-                local snd = self.sndIntermission[math.random(#self.sndIntermission)]
+            -- Play Intermission Sound (Win)
+            if #self.sndWin > 0 then 
+                local snd = self.sndWin[math.random(#self.sndWin)]
                 snd:stop()
                 snd:play()
             end
@@ -235,21 +239,26 @@ function GameLoop:update(dt)
             self:stopMinigame()
             gLives = gLives - 1
 
-            -- Play Intermission Sound
-            if #self.sndIntermission > 0 then 
-                local snd = self.sndIntermission[math.random(#self.sndIntermission)]
-                snd:stop()
-                snd:play()
-            end
-            
             -- Trigger Heart Loss Animation
             self.heartAnim.active = true
-            self.heartAnim.timer = 0.5 -- Trenble duration
+            self.heartAnim.timer = 0.5
             self.heartAnim.phase = 'tremble'
-            
+
+            -- Check game over slightly later or play correct sound immediately
             if gLives <= 0 then
+                -- Game Over Sound
+                if self.sndGameOver then
+                    self.sndGameOver:stop()
+                    self.sndGameOver:play()
+                end
                 gStateMachine:change('lost', { score = self.score })
             else
+                -- Life Lost Sound
+                if self.sndLoseLife then
+                    self.sndLoseLife:stop()
+                    self.sndLoseLife:play()
+                end
+                
                 self.phase = 'result'
                 self.resultMessage = "VIE PERDUE..."
                 self.timer = 2 -- Short delay before next game

@@ -237,7 +237,7 @@ function Minigame:draw()
 
     -- Difficulty indicator
     love.graphics.setColor(0.6, 0.6, 0.7)
-    love.graphics.printf(string.format("Difficulty: %.1f", self.difficulty), 0, 680, 1280, "center")
+
 end
 
 function Minigame:keypressed(key)

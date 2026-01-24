@@ -249,7 +249,6 @@ function Minigame:draw()
     
     -- Difficulty indicator
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Difficulty: " .. self.difficulty, 10, 680, 200, "left")
     
     -- Feedback message
     if self.feedbackTimer > 0 then

@@ -20,12 +20,17 @@ function Minigame:enter(difficulty)
     
     -- Create popups
     local screenW, screenH = 1280, 720
+    self.popupImages = {
+        love.graphics.newImage("minigames/popup/assets/bonzi.jpg"),
+        love.graphics.newImage("minigames/popup/assets/scam.jpg"),
+        love.graphics.newImage("minigames/popup/assets/peach.png")
+    }
     for i = 1, self.popupCount do
         local w = math.random(200, 400)
         local h = math.random(150, 300)
         local x = math.random(0, screenW - w)
         local y = math.random(0, screenH - h)
-        
+        local img = self.popupImages[math.random(1, #self.popupImages)]
         table.insert(self.popups, {
             x = x,
             y = y,
@@ -34,11 +39,10 @@ function Minigame:enter(difficulty)
             color = {math.random(), math.random(), math.random()},
             title = "ADVERTISEMENT " .. i,
             closed = false,
-            id = i
+            id = i,
+            image = img
         })
     end
-
-    self.bonzi = love.graphics.newImage("minigames/popup/assets/bonzi.jpg")
 end
 
 function Minigame:update(dt)
@@ -104,13 +108,13 @@ function Minigame:draw()
             love.graphics.setColor(1, 1, 1)
             love.graphics.print("X", p.x + p.w - btnSize + 5, p.y + 2)
 
-            -- Affiche l'image bonzi.jpg centrée dans la popup
-            local imgW, imgH = self.bonzi:getWidth(), self.bonzi:getHeight()
+            -- Affiche l'image de la popup centrée dans la popup
+            local imgW, imgH = p.image:getWidth(), p.image:getHeight()
             local scale = math.min((p.w-20)/imgW, (p.h-50)/imgH, 1)
             local imgX = p.x + (p.w - imgW*scale)/2
             local imgY = p.y + 35 + (p.h-35 - imgH*scale)/2
             love.graphics.setColor(1, 1, 1)
-            love.graphics.draw(self.bonzi, imgX, imgY, 0, scale, scale)
+            love.graphics.draw(p.image, imgX, imgY, 0, scale, scale)
         end
     end
 end

@@ -5,10 +5,10 @@ local GameLoop = {}
 local HUD_IMAGE = nil
 
 function GameLoop:enter(params)
-        -- Lazy-load HUD background image used for all minigames
-        if not HUD_IMAGE then
-            HUD_IMAGE = love.graphics.newImage('assets/hud.png')
-        end
+    -- Lazy-load HUD background image used for all minigames
+    if not HUD_IMAGE then
+        HUD_IMAGE = love.graphics.newImage('assets/hud.png')
+    end
     params = params or {}
     self.score = params.score or 0
     self.difficulty = params.difficulty or 1
@@ -27,6 +27,7 @@ function GameLoop:enter(params)
     for _, mgData in ipairs(G_MINIGAMES) do
         local success, mg = pcall(require, 'minigames.' .. mgData.id .. '.init')
         if success then
+            mg.id = mgData.id -- Attach ID from G_MINIGAMES so we can track it
             table.insert(self.availableMinigames, mg)
         else
             error("Failed to load minigame: " .. mgData.id .. "\nError: " .. tostring(mg))
@@ -73,15 +74,15 @@ function GameLoop:enter(params)
         baseScale = 1
     }
     self.lastKnownScore = gClickCount -- Track changes
-    
-    self.presentationProgress = 0 -- 0 = Windowed, 1 = Fullscreen
-    
+
+    self.presentationProgress = 0     -- 0 = Windowed, 1 = Fullscreen
+
     self.heartAnim = {
         active = false,
         timer = 0,
         phase = 'idle' -- 'tremble', 'explode'
     }
-    
+
     -- Load Audio
     self.sndWin = {}
     if love.filesystem.getInfo("states/assets/bouclewin1.ogg") then
@@ -90,17 +91,17 @@ function GameLoop:enter(params)
     if love.filesystem.getInfo("states/assets/bouclewin2.ogg") then
         table.insert(self.sndWin, love.audio.newSource("states/assets/bouclewin2.ogg", "static"))
     end
-    
+
     self.sndLoseLife = nil
     if love.filesystem.getInfo("states/assets/perduvie.ogg") then
         self.sndLoseLife = love.audio.newSource("states/assets/perduvie.ogg", "static")
     end
-    
+
     self.sndGameOver = nil
     if love.filesystem.getInfo("states/assets/perdufin.ogg") then
         self.sndGameOver = love.audio.newSource("states/assets/perdufin.ogg", "static")
     end
-    
+
     self:nextLevel()
 end
 
@@ -184,7 +185,7 @@ function GameLoop:update(dt)
     if self.phase == 'result' or self.phase == 'lost' then
         targetProgress = 0
     end
-    
+
     -- Smooth lerp
     self.presentationProgress = self.presentationProgress + (targetProgress - self.presentationProgress) * 5 * dt
 
@@ -201,40 +202,42 @@ function GameLoop:update(dt)
         if result == 'won' then
             self:stopMinigame()
             self.phase = 'result'
-            
+
             -- Play Intermission Sound (Win)
-            if #self.sndWin > 0 then 
+            if #self.sndWin > 0 then
                 local snd = self.sndWin[math.random(#self.sndWin)]
                 snd:stop()
                 snd:play()
             end
-            
+
             self.resultMessage = "VICTOIRE !"
-            
+
             -- Base 10s, accelerates with difficulty (minimum 3s)
             -- More aggressive scaling: -0.8s per level
             local duration = math.max(1, 5 - ((self.difficulty - 1) * 0.8))
-            
+
             self.timer = duration -- Show result for calculated duration (Intermission)
             self.resultDuration = duration
             self.score = self.score + 1
 
             -- Add click bonus
             local bonus = self.currentMinigame.clickBonus or 100 -- Increased default for visibility
-            
+
             -- Setup Score Animation
-            self.scoreStart = gClickCount -- Old score
+            self.scoreStart = gClickCount          -- Old score
             self.scoreTarget = gClickCount + bonus -- New score
             self.displayScore = self.scoreStart
-            
+
             -- Update global immediately (so it's saved), but animate display
             gClickCount = self.scoreTarget
 
             -- Record win for unlocks
-            if self.currentMinigame.name then
+            if self.currentMinigame.id then
+                gUnlockedMinigames[self.currentMinigame.id] = true
+            elseif self.currentMinigame.name then
+                -- Fallback but ID should be preferred
                 gUnlockedMinigames[self.currentMinigame.name] = true
             end
-
         elseif result == 'lost' then
             self:stopMinigame()
             gLives = gLives - 1
@@ -258,7 +261,7 @@ function GameLoop:update(dt)
                     self.sndLoseLife:stop()
                     self.sndLoseLife:play()
                 end
-                
+
                 self.phase = 'result'
                 self.resultMessage = "VIE PERDUE..."
                 self.timer = 2 -- Short delay before next game
@@ -272,67 +275,66 @@ function GameLoop:update(dt)
         end
     elseif self.phase == 'result' then
         self.timer = self.timer - dt
-        
+
         -- Score Animation
         -- User wants it to slow down at the end and have a clear pause.
         -- We make the animation faster than the total timer.
-        local animDuration = self.resultDuration - 3.0 -- End animation 3s before state change
+        local animDuration = self.resultDuration - 3.0    -- End animation 3s before state change
         if animDuration < 0.5 then animDuration = 0.5 end -- Safety
-        
+
         local timerElapsed = self.resultDuration - self.timer
-        
+
         if self.scoreTarget > self.scoreStart then
             local progress = timerElapsed / animDuration
-            
+
             -- Clamp 0-1
             if progress < 0 then progress = 0 end
             if progress > 1 then progress = 1 end
-            
+
             -- Ease Out Cubic: 1 - (1 - x)^3
             -- Starts fast, slows down at the end
             local curve = 1 - math.pow(1 - progress, 3)
-            
+
             self.displayScore = math.floor(self.scoreStart + (self.scoreTarget - self.scoreStart) * curve)
         else
             self.displayScore = self.scoreTarget
         end
 
-         -- Score Animation Logic (During Result Counting)
+        -- Score Animation Logic (During Result Counting)
         local currentDisplayScore = self.displayScore
-        
+
         -- Detect Changes
         if currentDisplayScore > self.lastKnownScore then
             -- Use thresholds (10, 100, 1000)
             local crossed1000 = math.floor(self.lastKnownScore / 1000) < math.floor(currentDisplayScore / 1000)
             local crossed100 = math.floor(self.lastKnownScore / 100) < math.floor(currentDisplayScore / 100)
             local crossed10 = math.floor(self.lastKnownScore / 10) < math.floor(currentDisplayScore / 10)
-            
+
             if crossed1000 then
-                 -- Huge Amplified Effect
+                -- Huge Amplified Effect
                 self.scoreUI.scale = 3.0
                 self.scoreUI.rotation = math.rad(math.random(-30, 30))
             elseif crossed100 then
-                 -- Medium Amplified Effect
+                -- Medium Amplified Effect
                 self.scoreUI.scale = 2.0
                 self.scoreUI.rotation = math.rad(math.random(-15, 15))
             elseif crossed10 then
-                 -- Small Effect
+                -- Small Effect
                 self.scoreUI.scale = 1.3
                 self.scoreUI.rotation = math.rad(math.random(-5, 5))
             end
-            
+
             self.lastKnownScore = currentDisplayScore
         end
-        
+
         -- Decay Animation
         self.scoreUI.scale = self.scoreUI.scale + (self.scoreUI.baseScale - self.scoreUI.scale) * 5 * dt
         self.scoreUI.rotation = self.scoreUI.rotation + (0 - self.scoreUI.rotation) * 5 * dt
 
         if self.timer <= 0 then
-
             self:nextLevel()
         end
-        
+
         -- Heart Animation Update
         if self.heartAnim.active then
             self.heartAnim.timer = self.heartAnim.timer - dt
@@ -382,7 +384,7 @@ function GameLoop:draw()
 
         love.graphics.push()
         love.graphics.translate(gameX, gameY)
-        
+
         -- Scale minigame to fit the screen area
         local mgScale = gameW / 1280
         love.graphics.scale(mgScale, mgScale)
@@ -466,20 +468,20 @@ function GameLoop:draw()
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf("Score Total", 0, 250, 1280, "center")
         love.graphics.setColor(1, 0.9, 0.2)
-        
+
         -- Draw animated score in Result Screen
         local displayVal = self.displayScore or gClickCount
-        
+
         love.graphics.push()
         love.graphics.translate(640, 290 + 20) -- Center pivot (approx center + half height)
         love.graphics.rotate(self.scoreUI.rotation)
         love.graphics.scale(self.scoreUI.scale, self.scoreUI.scale)
-        
+
         -- Color override if big milestone?
         if self.scoreUI.scale > 1.5 then
             love.graphics.setColor(1, 0.2, 0.2) -- Flash Red
         elseif self.scoreUI.scale > 1.1 then
-            love.graphics.setColor(1, 1, 0.2) -- Flash Yellow
+            love.graphics.setColor(1, 1, 0.2)   -- Flash Yellow
         else
             love.graphics.setColor(1, 0.9, 0.2) -- Gold
         end
@@ -490,30 +492,30 @@ function GameLoop:draw()
         love.graphics.setColor(1, 1, 1)
 
         love.graphics.printf("Vies Restantes", 0, 350, 1280, "center")
-        
+
         -- Draw Hearts
         local heartSize = 60 -- Increased size
         local gap = 20
         -- Total width includes the dying heart if animating
         local numHeartsInfo = gLives
         if self.heartAnim.active then numHeartsInfo = gLives + 1 end
-        
+
         local totalW = (numHeartsInfo * heartSize) + ((numHeartsInfo - 1) * gap)
         local startX = (1280 - totalW) / 2
         local startY = 390
-        
+
         love.graphics.setColor(1, 0.3, 0.3)
         for i = 1, numHeartsInfo do
-            local hx = startX + (i-1) * (heartSize + gap)
+            local hx = startX + (i - 1) * (heartSize + gap)
             local centerX = hx + heartSize / 2
             local centerY = startY + heartSize / 2
-            
+
             -- State Logic
             local isDyingHeart = (self.heartAnim.active and i == numHeartsInfo)
-            
+
             love.graphics.push()
             love.graphics.translate(centerX, centerY)
-            
+
             if isDyingHeart then
                 if self.heartAnim.phase == 'tremble' then
                     -- Tremble
@@ -521,7 +523,7 @@ function GameLoop:draw()
                     shakeAmt = 5
                     love.graphics.translate(math.random(-shakeAmt, shakeAmt), math.random(-shakeAmt, shakeAmt))
                     -- Also flash white?
-                     if math.floor(love.timer.getTime() * 20) % 2 == 0 then
+                    if math.floor(love.timer.getTime() * 20) % 2 == 0 then
                         love.graphics.setColor(1, 1, 1)
                     else
                         love.graphics.setColor(1, 0.3, 0.3)
@@ -531,60 +533,60 @@ function GameLoop:draw()
                     local progress = 1 - (self.heartAnim.timer / 0.5)
                     local scaleEx = 1.0 + progress * 2.0 -- 1.0 -> 3.0
                     local alpha = 1.0 - progress
-                    
+
                     love.graphics.scale(scaleEx, scaleEx)
                     love.graphics.setColor(1, 0.3, 0.3, alpha)
                 end
-                
+
                 -- Draw the dying heart
-                 love.graphics.translate(-centerX, -centerY)
-                 love.graphics.polygon("fill", 
-                    hx + heartSize/2, startY + heartSize,      
-                    hx, startY + heartSize/3,                  
-                    hx + heartSize/4, startY,                  
-                    hx + heartSize/2, startY + heartSize/4,    
-                    hx + heartSize*0.75, startY,               
-                    hx + heartSize, startY + heartSize/3       
+                love.graphics.translate(-centerX, -centerY)
+                love.graphics.polygon("fill",
+                    hx + heartSize / 2, startY + heartSize,
+                    hx, startY + heartSize / 3,
+                    hx + heartSize / 4, startY,
+                    hx + heartSize / 2, startY + heartSize / 4,
+                    hx + heartSize * 0.75, startY,
+                    hx + heartSize, startY + heartSize / 3
                 )
             else
                 -- Normal Heart logic
                 -- Animation: vivid, rhythmic, synchronized
                 local time = love.timer.getTime()
                 local speed = 8 -- Faster, more rhythmic
-                
+
                 -- Rotation
-                local angle = math.sin(time * speed) * 0.4 
-                
+                local angle = math.sin(time * speed) * 0.4
+
                 -- Scale
                 local scale = 1.0 + math.abs(math.sin(time * speed)) * 0.25
-                
+
                 -- Shockwave effect from dying heart?
                 if self.heartAnim.active and self.heartAnim.phase == 'explode' then
-                     local progress = 1 - (self.heartAnim.timer / 0.3) -- faster shockwave
-                     -- Push away from the right (where the dying heart is)
-                     -- The closer to the right (higher index), the more push?
-                     -- Actually push everything left?
-                     local push = -20 * progress * (i / gLives) 
-                     love.graphics.translate(push, 0)
+                    local progress = 1 - (self.heartAnim.timer / 0.3)  -- faster shockwave
+                    -- Push away from the right (where the dying heart is)
+                    -- The closer to the right (higher index), the more push?
+                    -- Actually push everything left?
+                    local push = -20 * progress * (i / gLives)
+                    love.graphics.translate(push, 0)
                 end
 
                 love.graphics.rotate(angle)
                 love.graphics.scale(scale, scale) -- Apply scale
-                
+
                 love.graphics.translate(-centerX, -centerY)
-                
-                -- Draw Heart Shape 
+
+                -- Draw Heart Shape
                 love.graphics.setColor(1, 0.3, 0.3)
-                love.graphics.polygon("fill", 
-                    hx + heartSize/2, startY + heartSize,      -- Bottom tip
-                    hx, startY + heartSize/3,                  -- Left middle
-                    hx + heartSize/4, startY,                  -- Left top humb
-                    hx + heartSize/2, startY + heartSize/4,    -- Center dip
-                    hx + heartSize*0.75, startY,               -- Right top hump
-                    hx + heartSize, startY + heartSize/3       -- Right middle
+                love.graphics.polygon("fill",
+                    hx + heartSize / 2, startY + heartSize, -- Bottom tip
+                    hx, startY + heartSize / 3,             -- Left middle
+                    hx + heartSize / 4, startY,             -- Left top humb
+                    hx + heartSize / 2, startY + heartSize / 4, -- Center dip
+                    hx + heartSize * 0.75, startY,          -- Right top hump
+                    hx + heartSize, startY + heartSize / 3  -- Right middle
                 )
             end
-            
+
             love.graphics.pop()
         end
 
@@ -595,18 +597,18 @@ function GameLoop:draw()
 
         -- Bar
         local barW, barH = 600, 10
-        local barX, barY = (1280 - barW)/2, 560
-        
+        local barX, barY = (1280 - barW) / 2, 560
+
         love.graphics.setColor(0.3, 0.3, 0.3)
         love.graphics.rectangle("fill", barX, barY, barW, barH, 5, 5)
-        
+
         local pct = 0
         if self.resultDuration and self.resultDuration > 0 then
             pct = 1 - (self.timer / self.resultDuration)
         end
         love.graphics.setColor(0.2, 0.6, 1.0)
         love.graphics.rectangle("fill", barX, barY, barW * pct, barH, 5, 5)
-        
+
         -- Restore font default (just in case)
         love.graphics.setFont(love.graphics.newFont(12))
     end
@@ -643,11 +645,11 @@ function GameLoop:keypressed(key)
         self.resultDuration = 0.5
         self.score = self.score + 1
         local bonus = (self.currentMinigame and self.currentMinigame.clickBonus) or 10
-        
+
         self.scoreStart = gClickCount
         self.scoreTarget = gClickCount + bonus
         self.displayScore = self.scoreStart
-        
+
         gClickCount = self.scoreTarget
     elseif gDevMode and key == 's' then
         -- Go to Shop

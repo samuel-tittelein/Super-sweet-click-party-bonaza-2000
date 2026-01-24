@@ -12,10 +12,10 @@ function Shop:enter(params)
     -- Load Background Images
     -- Using safe loading or pcall to avoid crash if missing
     local function load(path) return love.graphics.newImage(path) end
-    self.bgAccueil = load('states/shop_accueil.jpg')
-    self.bgChoix1 = load('states/shope_choix1.jpg') 
-    self.bgChoix2 = load('states/shop_choix2.jpg')
-    self.bgChoix3 = load('states/shop_choix3.jpg')
+    self.bgAccueil = load('states/assets/shop_accueil.jpg')
+    self.bgChoix1 = load('states/assets/shope_choix1.jpg')
+    self.bgChoix2 = load('states/assets/shop_choix2.jpg')
+    self.bgChoix3 = load('states/assets/shop_choix3.jpg')
     
     self.currentBg = self.bgAccueil
 

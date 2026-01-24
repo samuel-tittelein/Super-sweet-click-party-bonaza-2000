@@ -1,7 +1,8 @@
 -- minigames/taiko/init.lua
 -- Minijeu de rythme façon Taiko no Tatsujin, style pixel art
 local Minigame = {
-    name = 'taiko'
+    name = 'taiko',
+    instruction = "RYTHME !"
 }
 
 function Minigame:enter(difficulty)

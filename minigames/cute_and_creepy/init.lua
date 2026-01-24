@@ -1,5 +1,6 @@
-
-local Minigame = {}
+local Minigame = {
+    instruction = "TRIE !"
+}
 
 -- Cute and Creepy Minigame
 -- Goal: Drag and drop images into correct categories (Cute or Creepy)

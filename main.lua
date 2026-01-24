@@ -25,7 +25,7 @@ G_MINIGAMES = {
     { id = 'find-different',  name = 'Find Different' },
     { id = 'cute_and_creepy', name = 'Cute and Creepy' },
     { id = 'letterbox',       name = 'Letterbox' },
-    { id = 'zombie-shooter',  name = 'Zombie Shooter' }
+    { id = 'zombie-shooter',  name = 'Zombie Shooter' },
     { id = 'letterbox',       name = 'Letterbox' },
     { id = 'never_give_up',   name = 'Never Give Up' },
     { id = 'space_invader',   name = 'Space Invader' }

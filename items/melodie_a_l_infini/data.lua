@@ -4,15 +4,16 @@ local Item = {}
 Item.name = "Melodie Infini"
 Item.price = 100
 Item.bought = false
+Item.image = love.graphics.newImage("items/melodie_a_l_infini/melodie_a_l_infini.jpg")
 
 function Item:onBuy()
     gClickPower = gClickPower + 1
 end
 
 function Item:draw(x, y, scale)
-    love.graphics.setColor(1, 0, 1) -- Purple
-    love.graphics.print("♪", x + 5 * scale, y + 5 * scale)
     love.graphics.setColor(1, 1, 1)
+    local imgScale = (20 * scale) / math.max(self.image:getWidth(), self.image:getHeight())
+    love.graphics.draw(self.image, x, y, 0, imgScale, imgScale)
 end
 
 return Item

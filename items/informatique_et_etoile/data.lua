@@ -4,17 +4,16 @@ local Item = {}
 Item.name = "Info & Etoile"
 Item.price = 100
 Item.bought = false
+Item.image = love.graphics.newImage("items/informatique_et_etoile/informatique_et_etoile.png")
 
 function Item:onBuy()
     gClickPower = gClickPower + 1
 end
 
 function Item:draw(x, y, scale)
-    love.graphics.setColor(0, 0, 0.2) -- Dark blue
-    love.graphics.rectangle("fill", x, y, 20 * scale, 20 * scale)
-    love.graphics.setColor(1, 1, 0)   -- Yellow Star
-    love.graphics.print("*", x + 5 * scale, y + 5 * scale)
     love.graphics.setColor(1, 1, 1)
+    local imgScale = (20 * scale) / math.max(self.image:getWidth(), self.image:getHeight())
+    love.graphics.draw(self.image, x, y, 0, imgScale, imgScale)
 end
 
 return Item

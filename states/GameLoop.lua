@@ -75,6 +75,21 @@ function GameLoop:enter(params)
         phase = 'idle' -- 'tremble', 'explode'
     }
     
+    -- Load Intermission Sound
+    self.sndIntermission = {}
+    if love.filesystem.getInfo("states/assets/bouclewin1.ogg") then
+        table.insert(self.sndIntermission, love.audio.newSource("states/assets/bouclewin1.ogg", "static"))
+    end
+    if love.filesystem.getInfo("states/assets/bouclewin2.ogg") then
+        table.insert(self.sndIntermission, love.audio.newSource("states/assets/bouclewin2.ogg", "static"))
+    end
+     if love.filesystem.getInfo("states/assets/perduvie.ogg") then
+        table.insert(self.sndIntermission, love.audio.newSource("states/assets/perduvie.ogg", "static"))
+    end
+    if love.filesystem.getInfo("states/assets/perdufin.ogg") then
+        table.insert(self.sndIntermission, love.audio.newSource("states/assets/perdufin.ogg", "static"))
+    end
+    
     self:nextLevel()
 end
 
@@ -175,6 +190,14 @@ function GameLoop:update(dt)
         if result == 'won' then
             self:stopMinigame()
             self.phase = 'result'
+            
+            -- Play Intermission Sound
+            if #self.sndIntermission > 0 then 
+                local snd = self.sndIntermission[math.random(#self.sndIntermission)]
+                snd:stop()
+                snd:play()
+            end
+            
             self.resultMessage = "VICTOIRE !"
             
             -- Base 10s, accelerates with difficulty (minimum 3s)
@@ -204,6 +227,13 @@ function GameLoop:update(dt)
         elseif result == 'lost' then
             self:stopMinigame()
             gLives = gLives - 1
+
+            -- Play Intermission Sound
+            if #self.sndIntermission > 0 then 
+                local snd = self.sndIntermission[math.random(#self.sndIntermission)]
+                snd:stop()
+                snd:play()
+            end
             
             -- Trigger Heart Loss Animation
             self.heartAnim.active = true

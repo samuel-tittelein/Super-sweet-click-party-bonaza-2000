@@ -254,7 +254,7 @@ function SpaceInvader:draw()
 end
 
 function SpaceInvader:mousepressed(x, y, button)
-    if button == 2 then -- Right Click
+    if button == 1 then -- Right Click
         self:shoot()
     end
 end

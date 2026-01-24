@@ -38,9 +38,9 @@ function MainMenu:draw()
     Background.drawGarlands(w, h)
     
     -- Enlarge boxes further and center the pair with a small gap
-    local boxW, boxH, gap = 380, 480, 30
-    local leftX = (w * 0.5) - (gap * 0.5) - boxW
-    local rightX = (w * 0.5) + (gap * 0.5)
+    local boxW, boxH, gap = 380, 480, 80
+    local leftX = (w * 0.5) - (gap * 0.5) - boxW - 100
+    local rightX = (w * 0.5) + (gap * 0.5) + 100
     local y = 190
     Speakers.draw(leftX, y, boxW, boxH, false)
     Speakers.draw(rightX, y, boxW, boxH, true)

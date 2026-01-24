@@ -332,54 +332,28 @@ function GameLoop:draw()
         love.graphics.draw(HUD_IMAGE, 0, 0, 0, sx, sy)
     end
 
-    -- Draw Minigame
+    -- Draw Minigame inside the arcade cabinet screen
     if self.currentMinigame then
-        -- Interpolate View based on presentationProgress
-        -- Windowed: 800x450, Y offset ~30
-        -- Fullscreen: 1280x720, Y offset 0
-        local p = self.presentationProgress
-        
-        local gameW = 800 + (1280 - 800) * p
-        local gameH = 450 + (720 - 450) * p
-        
-        local centerY_windowed = (720 - 450) / 2 + 30
-        local centerY_full = (720 - 720) / 2 -- 0
-        local targetY = centerY_windowed + (centerY_full - centerY_windowed) * p
-        
-        local gameX = (1280 - gameW) / 2
-        local gameY = targetY
-        
-
-
-        -- Draw UI Text
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setFont(self.fonts.ui)
-        
-        -- Standard Score in Game (No Animation)
-        love.graphics.printf("Score: " .. gClickCount .. " | Lives: " .. gLives, 0, 20, 1280, "center")
+        -- Arcade cabinet screen area (sized for the screen inside hud.png)
+        local gameW, gameH = 800, 450
+        local gameX, gameY = (1280 - gameW) / 2, (720 - gameH) / 2 + 30
 
         -- Clip and Draw Game
         love.graphics.setScissor(gTransX + (gameX * gScale), gTransY + (gameY * gScale), gameW * gScale, gameH * gScale)
 
         love.graphics.push()
         love.graphics.translate(gameX, gameY)
-        -- If minigames are built for 1280x720, we might need to scale them down
-        -- Or just let them draw. The generic minigames use 'printf' centered at 1280.
-        -- To make them fit, let's scale them.
+        
+        -- Scale minigame to fit the screen area
         local mgScale = gameW / 1280
         love.graphics.scale(mgScale, mgScale)
 
-        love.graphics.push("all") -- Protect global state (fonts, line width, etc.)
+        love.graphics.push("all") -- Protect global state
         self.currentMinigame:draw()
         love.graphics.pop()
 
         love.graphics.pop()
         love.graphics.setScissor()
-
-        -- Draw Border around game
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", gameX, gameY, gameW, gameH)
     end
 
     -- Draw Phase Overlays
